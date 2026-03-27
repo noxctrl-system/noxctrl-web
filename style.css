@@ -1,0 +1,63 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(#0a0f2c, #000);
+  color: white;
+}
+
+.container {
+  padding: 20px;
+  text-align: center;
+}
+
+.title {
+  margin-top: 40px;
+}
+
+.logo {
+  font-size: 40px;
+  margin: 40px 0;
+  color: red;
+}
+
+.main-button {
+  padding: 20px;
+  font-size: 20px;
+  border-radius: 20px;
+  border: none;
+  background: white;
+  color: black;
+}
+
+.card {
+  background: rgba(255,255,255,0.1);
+  padding: 20px;
+  border-radius: 20px;
+  margin-top: 20px;
+}
+
+.mode {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 15px;
+  border-radius: 10px;
+  border: none;
+}
+
+.mode.active {
+  background: green;
+}
+
+button {
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  margin-top: 15px;
+}
+
+td, th {
+  padding: 10px;
+}
