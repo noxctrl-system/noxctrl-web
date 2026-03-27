@@ -2,32 +2,30 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NoxCtrL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NoxCtrL WebApp</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+<body class="landing-page">
 
-<body>
+  <main class="landing-shell">
+    <div class="landing-overlay"></div>
 
-  <div class="container">
+    <section class="landing-content">
+      <p class="landing-kicker">Willkommen bei</p>
 
-    <h1 class="title">Willkommen bei</h1>
+      <img
+        class="landing-logo"
+        src="https://pub-4c7d4f52ba75435a92d8c2d4d8bf2168.r2.dev/appLogo.png"
+        alt="NoxCtrL Logo"
+      />
 
-    <div class="logo">
-      NoxCtrL
-    </div>
-
-    <button class="main-button" onclick="goToRaceCenter()">
-      Race Center
-    </button>
-
-  </div>
-
-  <script>
-    function goToRaceCenter() {
-      window.location.href = "race-center.html";
-    }
-  </script>
+      <button class="race-center-button" onclick="window.location.href='race-center.html'">
+        <span>Race Center</span>
+        <span class="race-center-icon">⌁</span>
+      </button>
+    </section>
+  </main>
 
 </body>
 </html>
