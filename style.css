@@ -1,63 +1,315 @@
-body {
+:root {
+  --bg-dark: #050816;
+  --bg-card: rgba(30, 34, 50, 0.72);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #f4f7fb;
+  --muted: #b8c0d4;
+  --green: #2f7d4f;
+  --green-bright: #3fa86a;
+  --gray-btn: rgba(255,255,255,0.08);
+  --yellow: #ffd84d;
+  --blue: #5d9cff;
+  --slot1: #9e61d1;
+  --slot2: #f28c2d;
+  --slot3: #42c6d8;
+  --slot4: #e24d8b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
   margin: 0;
+  min-height: 100%;
   font-family: Arial, sans-serif;
-  background: linear-gradient(#0a0f2c, #000);
-  color: white;
+  color: var(--text);
+  background: var(--bg-dark);
 }
 
-.container {
-  padding: 20px;
-  text-align: center;
-}
-
-.title {
-  margin-top: 40px;
-}
-
-.logo {
-  font-size: 40px;
-  margin: 40px 0;
-  color: red;
-}
-
-.main-button {
-  padding: 20px;
-  font-size: 20px;
-  border-radius: 20px;
-  border: none;
-  background: white;
-  color: black;
-}
-
-.card {
-  background: rgba(255,255,255,0.1);
-  padding: 20px;
-  border-radius: 20px;
-  margin-top: 20px;
-}
-
-.mode {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
-  padding: 15px;
-  border-radius: 10px;
-  border: none;
-}
-
-.mode.active {
-  background: green;
+body {
+  background-image:
+    linear-gradient(rgba(5, 8, 22, 0.5), rgba(5, 8, 22, 0.8)),
+    url("https://pub-4c7d4f52ba75435a92d8c2d4d8bf2168.r2.dev/nosBackground.png");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 button {
+  font: inherit;
   cursor: pointer;
+  border: none;
 }
 
-table {
+.landing-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.landing-content {
   width: 100%;
-  margin-top: 15px;
+  max-width: 560px;
+  text-align: center;
 }
 
-td, th {
-  padding: 10px;
+.landing-kicker {
+  font-size: clamp(28px, 5vw, 42px);
+  margin: 0 0 24px 0;
+  color: #f4f7fb;
+  letter-spacing: 0.02em;
+}
+
+.landing-logo {
+  width: min(560px, 92%);
+  display: block;
+  margin: 0 auto 42px auto;
+}
+
+.race-center-button {
+  width: 100%;
+  min-height: 118px;
+  border-radius: 38px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #3f78b5;
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 30px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.28);
+}
+
+.race-center-icon {
+  font-size: 34px;
+  opacity: 0.9;
+}
+
+.race-shell {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.race-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  margin-bottom: 18px;
+}
+
+.race-header h1 {
+  margin: 0;
+  font-size: 34px;
+}
+
+.back-button {
+  position: absolute;
+  left: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.14);
+  color: white;
+  font-size: 30px;
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 22px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+  margin-bottom: 18px;
+}
+
+.glass-card h2 {
+  margin: 0 0 14px 0;
+  font-size: 30px;
+}
+
+.card-subtext {
+  margin: -4px 0 18px 0;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.mode-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mode-button {
+  width: 100%;
+  min-height: 72px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.08);
+  color: white;
+  text-align: left;
+  padding: 0 22px;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.mode-button.active {
+  background: linear-gradient(180deg, var(--green-bright), var(--green));
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+#disturbanceStatus {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.toggle-button,
+.scan-button,
+.send-button,
+.value-button {
+  border-radius: 16px;
+}
+
+.toggle-button,
+.scan-button {
+  min-height: 56px;
+  padding: 0 20px;
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(180deg, var(--green-bright), var(--green));
+  color: white;
+}
+
+.connection-top {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.yellow {
+  background: var(--yellow);
+}
+
+.status-dot.green {
+  background: #39d46a;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.params-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.params-table th {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 8px 6px;
+}
+
+.params-table th:first-child,
+.params-table td:first-child {
+  text-align: left;
+}
+
+.params-table td {
+  padding: 4px 8px;
+}
+
+.send-button {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+}
+
+.send-all {
+  background: rgba(93, 156, 255, 0.9);
+}
+
+.send-slot-1 { background: rgba(158, 97, 209, 0.9); }
+.send-slot-2 { background: rgba(242, 140, 45, 0.9); }
+.send-slot-3 { background: rgba(66, 198, 216, 0.9); }
+.send-slot-4 { background: rgba(226, 77, 139, 0.9); }
+
+.value-button {
+  min-width: 74px;
+  min-height: 42px;
+  padding: 0 12px;
+  background: rgba(0,0,0,0.22);
+  color: white;
+  font-size: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.value-button.draft {
+  background: rgba(255, 216, 77, 0.18);
+  border: 1px solid rgba(255, 216, 77, 0.55);
+}
+
+@media (max-width: 640px) {
+  .landing-kicker {
+    font-size: 22px;
+  }
+
+  .race-center-button {
+    min-height: 96px;
+    border-radius: 28px;
+    font-size: 20px;
+    padding: 20px 22px;
+  }
+
+  .race-header h1,
+  .glass-card h2 {
+    font-size: 24px;
+  }
+
+  .mode-button {
+    min-height: 64px;
+    font-size: 20px;
+  }
+
+  #disturbanceStatus {
+    font-size: 20px;
+  }
+
+  .card-subtext,
+  .connection-status {
+    font-size: 15px;
+  }
 }
