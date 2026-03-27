@@ -2,66 +2,65 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Race Center</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+<body class="race-page">
 
-<body>
+  <main class="race-shell">
+    <header class="race-header">
+      <button class="back-button" onclick="window.location.href='index.html'">‹</button>
+      <h1>Race Center</h1>
+    </header>
 
-<div class="container">
+    <section class="glass-card">
+      <h2>Modes</h2>
+      <div class="mode-stack">
+        <button class="mode-button active" data-mode="off">Nos-Control deaktiviert</button>
+        <button class="mode-button" data-mode="run">Rennbetrieb</button>
+        <button class="mode-button" data-mode="delayed">Verzögerter Rennbetrieb</button>
+      </div>
+    </section>
 
-  <h2>Race Center</h2>
+    <section class="glass-card">
+      <h2>Unterbrechungen</h2>
+      <div class="toggle-row">
+        <span id="disturbanceStatus">Aus</span>
+        <button id="disturbanceButton" class="toggle-button" onclick="toggleDisturbance()">Aktivieren</button>
+      </div>
+    </section>
 
-  <!-- MODES -->
-  <div class="card">
-    <h3>Modes</h3>
+    <section class="glass-card">
+      <h2>Verbindungen</h2>
+      <p class="card-subtext">Nach Modulen suchen und Parameter auslesen.</p>
 
-    <button class="mode active">Nos-Control deaktiviert</button>
-    <button class="mode">Rennbetrieb</button>
-    <button class="mode">Verzögerter Rennbetrieb</button>
-  </div>
+      <div class="connection-top">
+        <button class="scan-button" onclick="mockScan()">Suchen / Auslesen</button>
+        <div class="connection-status">
+          <span class="status-dot yellow"></span>
+          <span id="scanStatusText">Bereit</span>
+        </div>
+      </div>
 
-  <!-- UNTERBRECHUNGEN -->
-  <div class="card">
-    <h3>Unterbrechungen</h3>
+      <div class="table-wrap">
+        <table class="params-table">
+          <thead>
+            <tr>
+              <th>Senden</th>
+              <th>G (sek)</th>
+              <th>K (sek)</th>
+              <th>L (sek)</th>
+              <th>W (%)</th>
+            </tr>
+          </thead>
+          <tbody id="boxTableBody">
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
-    <button id="disturbanceBtn" onclick="toggleDisturbance()">
-      AUS
-    </button>
-  </div>
-
-  <!-- VERBINDUNGEN -->
-  <div class="card">
-    <h3>Verbindungen</h3>
-
-    <button onclick="scan()">Suchen / Auslesen</button>
-    <p id="status">Bereit</p>
-
-    <table>
-      <tr>
-        <th>Senden</th>
-        <th>G</th>
-        <th>K</th>
-        <th>L</th>
-        <th>W</th>
-      </tr>
-
-      <tr>
-        <td><button>Senden</button></td>
-        <td>8</td>
-        <td>1</td>
-        <td>3</td>
-        <td>50</td>
-      </tr>
-
-    </table>
-
-  </div>
-
-</div>
-
-<script src="app.js"></script>
-
+  <script src="app.js"></script>
 </body>
 </html>
