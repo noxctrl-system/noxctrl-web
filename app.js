@@ -27,16 +27,18 @@ function setupModeButtons() {
   const buttons = document.querySelectorAll(".mode-button");
 
   buttons.forEach(button => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
       const mode = button.dataset.mode;
 
+      // ❌ Wichtig: delayed NICHT hier behandeln
       if (mode === "delayed") {
-        openDelayedStartModal();
+        event.preventDefault();
         return;
       }
 
       buttons.forEach(b => b.classList.remove("active"));
       button.classList.add("active");
+
       state.mode = mode;
     });
   });
@@ -54,6 +56,7 @@ function setupDelayedStartModal() {
   if (openButton) {
     openButton.addEventListener("click", (event) => {
       event.preventDefault();
+      event.stopPropagation();
       openDelayedStartModal();
     });
   }
