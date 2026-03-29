@@ -43,10 +43,20 @@ function toggleDisturbance() {
 
 function mockScan() {
   const text = document.getElementById("scanStatusText");
+  const dot = document.getElementById("scanStatusDot");
+
   text.textContent = "Scan läuft ...";
+  if (dot) {
+    dot.classList.remove("green");
+    dot.classList.add("yellow");
+  }
 
   setTimeout(() => {
     text.textContent = "3 Box-Module gefunden";
+    if (dot) {
+      dot.classList.remove("yellow");
+      dot.classList.add("green");
+    }
     renderBoxTable();
   }, 1200);
 }
