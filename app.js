@@ -1,6 +1,12 @@
 const state = {
   mode: "off",
   disturbanceEnabled: false,
+
+  delayedStart: {
+    drivers: 12,
+    laps: 5
+  },
+
   boxes: [
     { slot: 1, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
     { slot: 2, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
@@ -12,18 +18,130 @@ const state = {
 
 document.addEventListener("DOMContentLoaded", () => {
   setupModeButtons();
+  setupDelayedStartModal();
+  renderDelayedStartUI();
   renderBoxTable();
 });
 
 function setupModeButtons() {
   const buttons = document.querySelectorAll(".mode-button");
+
   buttons.forEach(button => {
     button.addEventListener("click", () => {
+      const mode = button.dataset.mode;
+
+      if (mode === "delayed") {
+        openDelayedStartModal();
+        return;
+      }
+
       buttons.forEach(b => b.classList.remove("active"));
       button.classList.add("active");
-      state.mode = button.dataset.mode;
+      state.mode = mode;
     });
   });
+}
+
+function setupDelayedStartModal() {
+  const openButton = document.getElementById("openDelayedStartButton");
+  const closeButton = document.getElementById("closeDelayedStartButton");
+  const modal = document.getElementById("delayedStartModal");
+  const driversRange = document.getElementById("driversRange");
+  const lapsMinus = document.getElementById("lapsMinusButton");
+  const lapsPlus = document.getElementById("lapsPlusButton");
+  const confirmButton = document.getElementById("delayedStartConfirmButton");
+
+  if (openButton) {
+    openButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      openDelayedStartModal();
+    });
+  }
+
+  if (closeButton) {
+    closeButton.addEventListener("click", closeDelayedStartModal);
+  }
+
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closeDelayedStartModal();
+      }
+    });
+  }
+
+  if (driversRange) {
+    driversRange.addEventListener("input", (event) => {
+      state.delayedStart.drivers = Number(event.target.value);
+      renderDelayedStartUI();
+    });
+  }
+
+  if (lapsMinus) {
+    lapsMinus.addEventListener("click", () => {
+      state.delayedStart.laps = Math.max(1, state.delayedStart.laps - 1);
+      renderDelayedStartUI();
+    });
+  }
+
+  if (lapsPlus) {
+    lapsPlus.addEventListener("click", () => {
+      state.delayedStart.laps = Math.min(20, state.delayedStart.laps + 1);
+      renderDelayedStartUI();
+    });
+  }
+
+  if (confirmButton) {
+    confirmButton.addEventListener("click", () => {
+      const targetPasses = state.delayedStart.drivers * state.delayedStart.laps;
+
+      console.log("Delayed Start vorbereiten:", {
+        drivers: state.delayedStart.drivers,
+        laps: state.delayedStart.laps,
+        targetPasses
+      });
+
+      const buttons = document.querySelectorAll(".mode-button");
+      buttons.forEach(b => b.classList.remove("active"));
+
+      const delayedButton = document.getElementById("openDelayedStartButton");
+      if (delayedButton) delayedButton.classList.add("active");
+
+      state.mode = "delayed";
+      closeDelayedStartModal();
+    });
+  }
+}
+
+function openDelayedStartModal() {
+  const modal = document.getElementById("delayedStartModal");
+  if (!modal) return;
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  renderDelayedStartUI();
+}
+
+function closeDelayedStartModal() {
+  const modal = document.getElementById("delayedStartModal");
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function renderDelayedStartUI() {
+  const driversRange = document.getElementById("driversRange");
+  const driversValue = document.getElementById("driversValue");
+  const lapsValue = document.getElementById("lapsValue");
+  const targetPassesValue = document.getElementById("targetPassesValue");
+
+  if (driversRange) driversRange.value = state.delayedStart.drivers;
+  if (driversValue) driversValue.textContent = state.delayedStart.drivers;
+  if (lapsValue) lapsValue.textContent = state.delayedStart.laps;
+  if (targetPassesValue) {
+    targetPassesValue.textContent = state.delayedStart.drivers * state.delayedStart.laps;
+  }
 }
 
 function toggleDisturbance() {
@@ -45,18 +163,21 @@ function mockScan() {
   const text = document.getElementById("scanStatusText");
   const dot = document.getElementById("scanStatusDot");
 
-  text.textContent = "Scan läuft ...";
+  if (text) text.textContent = "Scan läuft ...";
+
   if (dot) {
     dot.classList.remove("green");
     dot.classList.add("yellow");
   }
 
   setTimeout(() => {
-    text.textContent = "3 Box-Module gefunden";
+    if (text) text.textContent = "3 Box-Module gefunden";
+
     if (dot) {
       dot.classList.remove("yellow");
       dot.classList.add("green");
     }
+
     renderBoxTable();
   }, 1200);
 }
