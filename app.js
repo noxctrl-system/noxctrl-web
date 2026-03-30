@@ -18,6 +18,7 @@ const state = {
 
 function sendCommand(command) {
   console.log("SEND:", command);
+  alert(command); // 👈 TEMPORÄR
 }
 
 function commandNosOff() {
