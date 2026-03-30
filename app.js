@@ -49,6 +49,7 @@ function setupDelayedStartModal() {
   const closeButton = document.getElementById("closeDelayedStartButton");
   const modal = document.getElementById("delayedStartModal");
   const driversRange = document.getElementById("driversRange");
+  const driversValue = document.getElementById("driversValue");
   const lapsMinus = document.getElementById("lapsMinusButton");
   const lapsPlus = document.getElementById("lapsPlusButton");
   const confirmButton = document.getElementById("delayedStartConfirmButton");
@@ -75,7 +76,13 @@ function setupDelayedStartModal() {
 
   if (driversRange) {
     driversRange.addEventListener("input", (event) => {
-      state.delayedStart.drivers = Number(event.target.value);
+      const value = Number(event.target.value);
+      state.delayedStart.drivers = value;
+    
+      if (driversValue) {
+        driversValue.textContent = value;
+      }
+    
       renderDelayedStartUI();
     });
   }
@@ -134,6 +141,13 @@ function closeDelayedStartModal() {
 }
 
 function renderDelayedStartUI() {
+  const driversValue = document.getElementById("driversValue");
+
+  if (driversValue) {
+    driversValue.textContent = state.delayedStart.drivers;
+  }
+
+  
   const driversRange = document.getElementById("driversRange");
   const driversValue = document.getElementById("driversValue");
   const lapsValue = document.getElementById("lapsValue");
