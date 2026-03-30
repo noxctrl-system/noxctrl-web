@@ -28,7 +28,7 @@
       <h2>Unterbrechungen</h2>
       <div class="toggle-row">
         <span id="disturbanceStatus">Aus</span>
-        <button id="disturbanceButton" class="toggle-button" onclick="toggleDisturbance()">Aktivieren</button>
+        <button id="disturbanceButton" class="toggle-button">Konfigurieren</button>
       </div>
     </section>
 
@@ -61,8 +61,6 @@
       </div>
     </section>
   </main>
-
-  <script src="app.js"></script>
   
   <div id="delayedStartModal" class="modal-overlay hidden">
   <div class="modal-sheet">
@@ -110,6 +108,82 @@
     </button>
   </div>
 </div>
+
+  <div id="disturbanceModal" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+
+    <div class="modal-header">
+      <h2>Unterbrechungen</h2>
+      <button class="modal-close-button" id="closeDisturbanceButton">Abbrechen</button>
+    </div>
+
+    <div class="modal-section">
+      <label class="modal-label">Aktiv</label>
+      <div class="toggle-pill-row">
+        <button id="distEnabledOff" class="pill-button active">Aus</button>
+        <button id="distEnabledOn" class="pill-button">Ein</button>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <label class="modal-label" for="distProbabilityRange">Wahrscheinlichkeit (%)</label>
+      <div class="range-row">
+        <input
+          id="distProbabilityRange"
+          class="drivers-range"
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          value="40"
+        />
+        <span id="distProbabilityValue" class="range-value">40</span>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <label class="modal-label">Auslösung nach Minuten</label>
+      <div class="stepper-row">
+        <button class="stepper-button" id="distMinutesMinus">−</button>
+        <span id="distMinutesValue" class="stepper-value">10</span>
+        <button class="stepper-button" id="distMinutesPlus">+</button>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <label class="modal-label">Dauer von / bis Sekunden</label>
+      <div class="dual-stepper-grid">
+        <div>
+          <div class="mini-label">Von</div>
+          <div class="stepper-row">
+            <button class="stepper-button" id="distMinMinus">−</button>
+            <span id="distMinValue" class="stepper-value">20</span>
+            <button class="stepper-button" id="distMinPlus">+</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="mini-label">Bis</div>
+          <div class="stepper-row">
+            <button class="stepper-button" id="distMaxMinus">−</button>
+            <span id="distMaxValue" class="stepper-value">60</span>
+            <button class="stepper-button" id="distMaxPlus">+</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="modal-hint">
+        Geplantes Format: <span id="distConfigPreview">DISTCFG=0,40,10,20,60</span>
+      </p>
+    </div>
+
+    <button class="modal-start-button" id="disturbanceConfirmButton">
+      Übernehmen
+    </button>
+  </div>
+</div>
   
+<script src="app.js"></script>
 </body>
 </html>
