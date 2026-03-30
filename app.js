@@ -7,6 +7,14 @@ const state = {
     laps: 5
   },
 
+  disturbanceConfig: {
+    enabled: false,
+    probability: 40,
+    minutes: 10,
+    durationMin: 20,
+    durationMax: 60
+  },
+
   boxes: [
     { slot: 1, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
     { slot: 2, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
