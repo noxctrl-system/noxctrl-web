@@ -1,3 +1,16 @@
+let nosDevice = null;
+let nosServer = null;
+let nosService = null;
+let nosCtrlChar = null;
+let nosStatChar = null;
+
+const NOS_BLE = {
+  name: "Nos-Control",
+  serviceUuid: "12345678-1234-1234-1234-1234567890ab",
+  ctrlUuid: "12345678-1234-1234-1234-1234567890ac",
+  statUuid: "12345678-1234-1234-1234-1234567890ad"
+};
+
 const state = {
   mode: "off",
   disturbanceEnabled: false,
@@ -21,50 +34,100 @@ const state = {
     { slot: 3, online: false, params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
     { slot: 4, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } }
   ],
+
   allDraft: { G: 8, K: 1, L: 3, W: 50 }
 };
 
-function sendCommand(command) {
+async function connectNosModule() {
+  if (!navigator.bluetooth) {
+    alert("Web Bluetooth wird auf diesem Gerät oder Browser nicht unterstützt.");
+    return false;
+  }
+
+  try {
+    nosDevice = await navigator.bluetooth.requestDevice({
+      filters: [
+        { name: NOS_BLE.name }
+      ],
+      optionalServices: [NOS_BLE.serviceUuid]
+    });
+
+    nosServer = await nosDevice.gatt.connect();
+    nosService = await nosServer.getPrimaryService(NOS_BLE.serviceUuid);
+    nosCtrlChar = await nosService.getCharacteristic(NOS_BLE.ctrlUuid);
+    nosStatChar = await nosService.getCharacteristic(NOS_BLE.statUuid);
+
+    console.log("BLE verbunden mit:", nosDevice.name);
+    alert(`Verbunden mit ${nosDevice.name}`);
+    return true;
+  } catch (error) {
+    console.error("BLE Verbindung fehlgeschlagen:", error);
+    alert("BLE Verbindung fehlgeschlagen. Details in der Konsole.");
+    return false;
+  }
+}
+
+async function sendBleCommand(command) {
+  if (!nosCtrlChar) {
+    const connected = await connectNosModule();
+    if (!connected) return;
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(command);
+    await nosCtrlChar.writeValue(data);
+    console.log("BLE SEND:", command);
+  } catch (error) {
+    console.error("Senden fehlgeschlagen:", error);
+    alert("Senden fehlgeschlagen. Details in der Konsole.");
+  }
+}
+
+async function sendCommand(command) {
   console.log("SEND:", command);
-  alert(command); // 👈 TEMPORÄR
+  await sendBleCommand(command);
 }
 
-function commandNosOff() {
-  sendCommand("PASS=OFF");
-  sendCommand("RESET");
-  sendCommand("MODE=IDLE");
-  sendCommand("STATUS");
+async function commandNosOff() {
+  await sendCommand("PASS=OFF");
+  await sendCommand("RESET");
+  await sendCommand("MODE=IDLE");
+  await sendCommand("STATUS");
 }
 
-function commandNosRun() {
-  sendCommand("PASS=OFF");
-  sendCommand("MODE=RUN");
+async function commandNosRun() {
+  await sendCommand("PASS=OFF");
+  await sendCommand("MODE=RUN");
 }
 
-function commandNosDelayedStart(drivers, laps) {
-  sendCommand(`DSTART=${drivers},${laps}`);
+async function commandNosDelayedStart(drivers, laps) {
+  await sendCommand(`DSTART=${drivers},${laps}`);
 }
 
-function commandDisturbanceOn() {
-  sendCommand("MODE=IDLE");
+async function commandDisturbanceOn() {
+  await sendCommand("MODE=IDLE");
 }
 
-function commandDisturbanceOff() {
-  sendCommand("MODE=RUN");
+async function commandDisturbanceOff() {
+  await sendCommand("MODE=RUN");
 }
 
-function commandSearchAndRead() {
-  console.log("SCAN + STATUS anfordern");
+async function commandSendBoxConfig(slot, params) {
+  await sendCommand(`BOX${slot}: CFG=${params.G},${params.K},${params.L},${params.W}`);
+  await sendCommand(`BOX${slot}: STATUS`);
 }
 
-function commandSendBoxConfig(slot, params) {
-  sendCommand(`BOX${slot}: CFG=${params.G},${params.K},${params.L},${params.W}`);
-  sendCommand(`BOX${slot}: STATUS`);
+async function commandSendAllBoxes(params) {
+  await sendCommand(`ALL BOXES: CFG=${params.G},${params.K},${params.L},${params.W}`);
+  await sendCommand("ALL BOXES: STATUS");
 }
 
-function commandSendAllBoxes(params) {
-  sendCommand(`ALL BOXES: CFG=${params.G},${params.K},${params.L},${params.W}`);
-  sendCommand("ALL BOXES: STATUS");
+async function commandSearchAndRead() {
+  const connected = await connectNosModule();
+  if (!connected) return;
+
+  await sendCommand("STATUS");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -80,7 +143,7 @@ function setupModeButtons() {
   const buttons = document.querySelectorAll(".mode-button");
 
   buttons.forEach(button => {
-    button.addEventListener("click", (event) => {
+    button.addEventListener("click", async (event) => {
       const mode = button.dataset.mode;
 
       if (mode === "delayed") {
@@ -93,11 +156,11 @@ function setupModeButtons() {
       state.mode = mode;
 
       if (mode === "off") {
-        commandNosOff();
+        await commandNosOff();
       }
-
+      
       if (mode === "run") {
-        commandNosRun();
+        await commandNosRun();
       }
     });
   });
@@ -161,11 +224,11 @@ function setupDelayedStartModal() {
   }
 
   if (confirmButton) {
-    confirmButton.addEventListener("click", () => {
+    confirmButton.addEventListener("click", async () => {
       const drivers = state.delayedStart.drivers;
       const laps = state.delayedStart.laps;
   
-      commandNosDelayedStart(drivers, laps);
+      await commandNosDelayedStart(drivers, laps);
   
       const buttons = document.querySelectorAll(".mode-button");
       buttons.forEach(b => b.classList.remove("active"));
@@ -405,8 +468,8 @@ function updateDisturbanceCardStatus() {
   }
 }
 
-function mockScan() {
-  commandSearchAndRead();
+async function mockScan() {
+  await commandSearchAndRead();
   
   const text = document.getElementById("scanStatusText");
   const dot = document.getElementById("scanStatusDot");
@@ -456,8 +519,8 @@ function createAllRow() {
     <td>${createSelect("all", "W", state.allDraft.W, 0, 90, 10)}</td>
   `;
 
-  row.querySelector(".send-button").addEventListener("click", () => {
-    commandSendAllBoxes(state.allDraft);
+  row.querySelector(".send-button").addEventListener("click", async () => {
+    await commandSendAllBoxes(state.allDraft);
   
     state.boxes.forEach(box => {
       if (!box.online) return;
@@ -485,8 +548,8 @@ function createBoxRow(box) {
     <td>${createSelect(box.slot, "W", draft.W, 0, 90, 10, draft.W !== live.W)}</td>
   `;
 
-  row.querySelector(".send-button").addEventListener("click", () => {
-    commandSendBoxConfig(box.slot, box.draft);
+  row.querySelector(".send-button").addEventListener("click", async () => {
+    await commandSendBoxConfig(box.slot, box.draft);
     box.params = { ...box.draft };
     renderBoxTable();
   });
