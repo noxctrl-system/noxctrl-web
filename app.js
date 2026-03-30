@@ -141,13 +141,6 @@ function closeDelayedStartModal() {
 }
 
 function renderDelayedStartUI() {
-  const driversValue = document.getElementById("driversValue");
-
-  if (driversValue) {
-    driversValue.textContent = state.delayedStart.drivers;
-  }
-
-  
   const driversRange = document.getElementById("driversRange");
   const driversValue = document.getElementById("driversValue");
   const lapsValue = document.getElementById("lapsValue");
@@ -160,7 +153,6 @@ function renderDelayedStartUI() {
     targetPassesValue.textContent = state.delayedStart.drivers * state.delayedStart.laps;
   }
 }
-
 function toggleDisturbance() {
   state.disturbanceEnabled = !state.disturbanceEnabled;
 
