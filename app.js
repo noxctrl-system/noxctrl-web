@@ -70,7 +70,9 @@ function commandSendAllBoxes(params) {
 document.addEventListener("DOMContentLoaded", () => {
   setupModeButtons();
   setupDelayedStartModal();
+  setupDisturbanceModal();
   renderDelayedStartUI();
+  renderDisturbanceUI();
   renderBoxTable();
 });
 
@@ -208,20 +210,198 @@ function renderDelayedStartUI() {
   }
 }
 
-function toggleDisturbance() {
-  state.disturbanceEnabled = !state.disturbanceEnabled;
+function setupDisturbanceModal() {
+  const openButton = document.getElementById("disturbanceButton");
+  const closeButton = document.getElementById("closeDisturbanceButton");
+  const modal = document.getElementById("disturbanceModal");
 
+  const enabledOff = document.getElementById("distEnabledOff");
+  const enabledOn = document.getElementById("distEnabledOn");
+
+  const probabilityRange = document.getElementById("distProbabilityRange");
+
+  const minutesMinus = document.getElementById("distMinutesMinus");
+  const minutesPlus = document.getElementById("distMinutesPlus");
+
+  const minMinus = document.getElementById("distMinMinus");
+  const minPlus = document.getElementById("distMinPlus");
+
+  const maxMinus = document.getElementById("distMaxMinus");
+  const maxPlus = document.getElementById("distMaxPlus");
+
+  const confirmButton = document.getElementById("disturbanceConfirmButton");
+
+  if (openButton) {
+    openButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openDisturbanceModal();
+    });
+  }
+
+  if (closeButton) {
+    closeButton.addEventListener("click", closeDisturbanceModal);
+  }
+
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closeDisturbanceModal();
+      }
+    });
+  }
+
+  if (enabledOff) {
+    enabledOff.addEventListener("click", () => {
+      state.disturbanceConfig.enabled = false;
+      renderDisturbanceUI();
+    });
+  }
+
+  if (enabledOn) {
+    enabledOn.addEventListener("click", () => {
+      state.disturbanceConfig.enabled = true;
+      renderDisturbanceUI();
+    });
+  }
+
+  if (probabilityRange) {
+    probabilityRange.addEventListener("input", (event) => {
+      state.disturbanceConfig.probability = Number(event.target.value);
+      renderDisturbanceUI();
+    });
+  }
+
+  if (minutesMinus) {
+    minutesMinus.addEventListener("click", () => {
+      state.disturbanceConfig.minutes = Math.max(1, state.disturbanceConfig.minutes - 1);
+      renderDisturbanceUI();
+    });
+  }
+
+  if (minutesPlus) {
+    minutesPlus.addEventListener("click", () => {
+      state.disturbanceConfig.minutes = Math.min(30, state.disturbanceConfig.minutes + 1);
+      renderDisturbanceUI();
+    });
+  }
+
+  if (minMinus) {
+    minMinus.addEventListener("click", () => {
+      state.disturbanceConfig.durationMin = Math.max(5, state.disturbanceConfig.durationMin - 5);
+      enforceDisturbanceMinMax();
+      renderDisturbanceUI();
+    });
+  }
+
+  if (minPlus) {
+    minPlus.addEventListener("click", () => {
+      state.disturbanceConfig.durationMin = Math.min(120, state.disturbanceConfig.durationMin + 5);
+      enforceDisturbanceMinMax();
+      renderDisturbanceUI();
+    });
+  }
+
+  if (maxMinus) {
+    maxMinus.addEventListener("click", () => {
+      state.disturbanceConfig.durationMax = Math.max(5, state.disturbanceConfig.durationMax - 5);
+      enforceDisturbanceMinMax();
+      renderDisturbanceUI();
+    });
+  }
+
+  if (maxPlus) {
+    maxPlus.addEventListener("click", () => {
+      state.disturbanceConfig.durationMax = Math.min(120, state.disturbanceConfig.durationMax + 5);
+      enforceDisturbanceMinMax();
+      renderDisturbanceUI();
+    });
+  }
+
+  if (confirmButton) {
+    confirmButton.addEventListener("click", () => {
+      const cfg = state.disturbanceConfig;
+      console.log(
+        `DISTCFG=${cfg.enabled ? 1 : 0},${cfg.probability},${cfg.minutes},${cfg.durationMin},${cfg.durationMax}`
+      );
+
+      state.disturbanceEnabled = cfg.enabled;
+      updateDisturbanceCardStatus();
+      closeDisturbanceModal();
+    });
+  }
+}
+
+function openDisturbanceModal() {
+  const modal = document.getElementById("disturbanceModal");
+  if (!modal) return;
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  renderDisturbanceUI();
+}
+
+function closeDisturbanceModal() {
+  const modal = document.getElementById("disturbanceModal");
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function enforceDisturbanceMinMax() {
+  if (state.disturbanceConfig.durationMin > state.disturbanceConfig.durationMax) {
+    state.disturbanceConfig.durationMax = state.disturbanceConfig.durationMin;
+  }
+
+  if (state.disturbanceConfig.durationMax < state.disturbanceConfig.durationMin) {
+    state.disturbanceConfig.durationMin = state.disturbanceConfig.durationMax;
+  }
+}
+
+function renderDisturbanceUI() {
+  const cfg = state.disturbanceConfig;
+
+  const enabledOff = document.getElementById("distEnabledOff");
+  const enabledOn = document.getElementById("distEnabledOn");
+
+  const probabilityRange = document.getElementById("distProbabilityRange");
+  const probabilityValue = document.getElementById("distProbabilityValue");
+
+  const minutesValue = document.getElementById("distMinutesValue");
+  const minValue = document.getElementById("distMinValue");
+  const maxValue = document.getElementById("distMaxValue");
+
+  const preview = document.getElementById("distConfigPreview");
+
+  if (enabledOff) enabledOff.classList.toggle("active", !cfg.enabled);
+  if (enabledOn) enabledOn.classList.toggle("active", cfg.enabled);
+
+  if (probabilityRange) probabilityRange.value = cfg.probability;
+  if (probabilityValue) probabilityValue.textContent = cfg.probability;
+
+  if (minutesValue) minutesValue.textContent = cfg.minutes;
+  if (minValue) minValue.textContent = cfg.durationMin;
+  if (maxValue) maxValue.textContent = cfg.durationMax;
+
+  if (preview) {
+    preview.textContent =
+      `DISTCFG=${cfg.enabled ? 1 : 0},${cfg.probability},${cfg.minutes},${cfg.durationMin},${cfg.durationMax}`;
+  }
+
+  updateDisturbanceCardStatus();
+}
+
+function updateDisturbanceCardStatus() {
   const status = document.getElementById("disturbanceStatus");
   const button = document.getElementById("disturbanceButton");
 
-  if (state.disturbanceEnabled) {
-    status.textContent = "Ein";
-    button.textContent = "Deaktivieren";
-    commandDisturbanceOn();
-  } else {
-    status.textContent = "Aus";
-    button.textContent = "Aktivieren";
-    commandDisturbanceOff();
+  if (status) {
+    status.textContent = state.disturbanceConfig.enabled ? "Ein" : "Aus";
+  }
+
+  if (button) {
+    button.textContent = "Konfigurieren";
   }
 }
 
