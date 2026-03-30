@@ -16,6 +16,48 @@ const state = {
   allDraft: { G: 8, K: 1, L: 3, W: 50 }
 };
 
+function sendCommand(command) {
+  console.log("SEND:", command);
+}
+
+function commandNosOff() {
+  sendCommand("PASS=OFF");
+  sendCommand("RESET");
+  sendCommand("MODE=IDLE");
+  sendCommand("STATUS");
+}
+
+function commandNosRun() {
+  sendCommand("PASS=OFF");
+  sendCommand("MODE=RUN");
+}
+
+function commandNosDelayedStart(drivers, laps) {
+  sendCommand(`DSTART=${drivers},${laps}`);
+}
+
+function commandDisturbanceOn() {
+  sendCommand("MODE=IDLE");
+}
+
+function commandDisturbanceOff() {
+  sendCommand("MODE=RUN");
+}
+
+function commandSearchAndRead() {
+  console.log("SCAN + STATUS anfordern");
+}
+
+function commandSendBoxConfig(slot, params) {
+  sendCommand(`BOX${slot}: CFG=${params.G},${params.K},${params.L},${params.W}`);
+  sendCommand(`BOX${slot}: STATUS`);
+}
+
+function commandSendAllBoxes(params) {
+  sendCommand(`ALL BOXES: CFG=${params.G},${params.K},${params.L},${params.W}`);
+  sendCommand("ALL BOXES: STATUS");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   setupModeButtons();
   setupDelayedStartModal();
@@ -30,7 +72,6 @@ function setupModeButtons() {
     button.addEventListener("click", (event) => {
       const mode = button.dataset.mode;
 
-      // ❌ Wichtig: delayed NICHT hier behandeln
       if (mode === "delayed") {
         event.preventDefault();
         return;
@@ -38,8 +79,15 @@ function setupModeButtons() {
 
       buttons.forEach(b => b.classList.remove("active"));
       button.classList.add("active");
-
       state.mode = mode;
+
+      if (mode === "off") {
+        commandNosOff();
+      }
+
+      if (mode === "run") {
+        commandNosRun();
+      }
     });
   });
 }
@@ -103,20 +151,17 @@ function setupDelayedStartModal() {
 
   if (confirmButton) {
     confirmButton.addEventListener("click", () => {
-      const targetPasses = state.delayedStart.drivers * state.delayedStart.laps;
-
-      console.log("Delayed Start vorbereiten:", {
-        drivers: state.delayedStart.drivers,
-        laps: state.delayedStart.laps,
-        targetPasses
-      });
-
+      const drivers = state.delayedStart.drivers;
+      const laps = state.delayedStart.laps;
+  
+      commandNosDelayedStart(drivers, laps);
+  
       const buttons = document.querySelectorAll(".mode-button");
       buttons.forEach(b => b.classList.remove("active"));
-
+  
       const delayedButton = document.getElementById("openDelayedStartButton");
       if (delayedButton) delayedButton.classList.add("active");
-
+  
       state.mode = "delayed";
       closeDelayedStartModal();
     });
@@ -153,6 +198,7 @@ function renderDelayedStartUI() {
     targetPassesValue.textContent = state.delayedStart.drivers * state.delayedStart.laps;
   }
 }
+
 function toggleDisturbance() {
   state.disturbanceEnabled = !state.disturbanceEnabled;
 
@@ -162,13 +208,17 @@ function toggleDisturbance() {
   if (state.disturbanceEnabled) {
     status.textContent = "Ein";
     button.textContent = "Deaktivieren";
+    commandDisturbanceOn();
   } else {
     status.textContent = "Aus";
     button.textContent = "Aktivieren";
+    commandDisturbanceOff();
   }
 }
 
 function mockScan() {
+  commandSearchAndRead();
+  
   const text = document.getElementById("scanStatusText");
   const dot = document.getElementById("scanStatusDot");
 
@@ -218,11 +268,14 @@ function createAllRow() {
   `;
 
   row.querySelector(".send-button").addEventListener("click", () => {
+    commandSendAllBoxes(state.allDraft);
+  
     state.boxes.forEach(box => {
       if (!box.online) return;
       box.draft = { ...state.allDraft };
       box.params = { ...state.allDraft };
     });
+  
     renderBoxTable();
   });
 
@@ -244,6 +297,7 @@ function createBoxRow(box) {
   `;
 
   row.querySelector(".send-button").addEventListener("click", () => {
+    commandSendBoxConfig(box.slot, box.draft);
     box.params = { ...box.draft };
     renderBoxTable();
   });
