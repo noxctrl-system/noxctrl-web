@@ -41,10 +41,13 @@ const state = {
 async function connectNosModule() {
   if (!navigator.bluetooth) {
     alert("Web Bluetooth wird auf diesem Gerät oder Browser nicht unterstützt.");
+    setScanStatus("Web Bluetooth nicht unterstützt", "yellow");
     return false;
   }
 
   try {
+    setScanStatus("Nos-Modul auswählen ...", "yellow");
+
     nosDevice = await navigator.bluetooth.requestDevice({
       filters: [
         { name: NOS_BLE.name }
@@ -52,18 +55,67 @@ async function connectNosModule() {
       optionalServices: [NOS_BLE.serviceUuid]
     });
 
+    nosDevice.addEventListener("gattserverdisconnected", handleNosDisconnected);
+
+    setScanStatus("Verbinde mit Nos-Modul ...", "yellow");
+
     nosServer = await nosDevice.gatt.connect();
     nosService = await nosServer.getPrimaryService(NOS_BLE.serviceUuid);
     nosCtrlChar = await nosService.getCharacteristic(NOS_BLE.ctrlUuid);
     nosStatChar = await nosService.getCharacteristic(NOS_BLE.statUuid);
 
-    console.log("BLE verbunden mit:", nosDevice.name);
-    alert(`Verbunden mit ${nosDevice.name}`);
+    await setupNosNotifications();
+
+    setScanStatus(`Verbunden: ${nosDevice.name}`, "green");
+
+    await sendCommand("STATUS");
+
     return true;
   } catch (error) {
     console.error("BLE Verbindung fehlgeschlagen:", error);
-    alert("BLE Verbindung fehlgeschlagen. Details in der Konsole.");
+    setScanStatus("Verbindung fehlgeschlagen", "yellow");
     return false;
+  }
+}
+
+async function setupNosNotifications() {
+  if (!nosStatChar) return;
+
+  try {
+    await nosStatChar.startNotifications();
+
+    nosStatChar.addEventListener("characteristicvaluechanged", event => {
+      const value = event.target.value;
+      const text = new TextDecoder().decode(value);
+
+      console.log("NOS STATUS:", text);
+      setScanStatus(`Status: ${text}`, "green");
+    });
+  } catch (error) {
+    console.warn("Nos Notifications konnten nicht aktiviert werden:", error);
+  }
+}
+
+function handleNosDisconnected() {
+  console.log("Nos-Modul getrennt");
+
+  nosServer = null;
+  nosService = null;
+  nosCtrlChar = null;
+  nosStatChar = null;
+
+  setScanStatus("Nos-Modul getrennt", "yellow");
+}
+
+function setScanStatus(text, color) {
+  const statusText = document.getElementById("scanStatusText");
+  const dot = document.getElementById("scanStatusDot");
+
+  if (statusText) statusText.textContent = text;
+
+  if (dot) {
+    dot.classList.remove("green", "yellow");
+    dot.classList.add(color);
   }
 }
 
@@ -76,11 +128,16 @@ async function sendBleCommand(command) {
   try {
     const encoder = new TextEncoder();
     const data = encoder.encode(command);
+
     await nosCtrlChar.writeValue(data);
+
     console.log("BLE SEND:", command);
+    setScanStatus(`Gesendet: ${command}`, "green");
   } catch (error) {
     console.error("Senden fehlgeschlagen:", error);
-    alert("Senden fehlgeschlagen. Details in der Konsole.");
+    setScanStatus("Senden fehlgeschlagen", "yellow");
+
+    nosCtrlChar = null;
   }
 }
 
@@ -134,10 +191,21 @@ document.addEventListener("DOMContentLoaded", () => {
   setupModeButtons();
   setupDelayedStartModal();
   setupDisturbanceModal();
+  setupNosConnectButton();
   renderDelayedStartUI();
   renderDisturbanceUI();
   renderBoxTable();
 });
+
+function setupNosConnectButton() {
+  const button = document.getElementById("connectNosButton");
+
+  if (!button) return;
+
+  button.addEventListener("click", async () => {
+    await connectNosModule();
+  });
+}
 
 function setupModeButtons() {
   const buttons = document.querySelectorAll(".mode-button");
