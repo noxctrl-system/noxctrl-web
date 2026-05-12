@@ -81,18 +81,22 @@ async function connectNosModule() {
 
     nosModules.push(module);
 
+    renderNosModuleList();
+    setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
+    
     console.log("NOS MODULES:", nosModules.map(m => ({
       id: m.id,
       name: m.name,
       connected: m.device?.gatt?.connected
     })));
     
-    renderNosModuleList();
+    
     
     await setupNosNotifications(module);
 
     setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
-
+    renderNosModuleList();
+    
     await sendToNosModule(module, "STATUS");
 
     return true;
@@ -161,10 +165,12 @@ function renderNosModuleList() {
   list.innerHTML = nosModules
     .map((module, index) => {
       const connected = module.device?.gatt?.connected ? "verbunden" : "getrennt";
-      return `Nos ${index + 1}: ${module.name} (${connected})`;
+      const shortId = module.id ? module.id.slice(-6) : "?";
+      return `Nos ${index + 1}: ${module.name} · ${connected} · ${shortId}`;
     })
     .join("<br>");
 }
+
 async function sendToNosModule(module, command) {
   try {
     const encoder = new TextEncoder();
