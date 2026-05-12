@@ -1,7 +1,6 @@
-let nosDevice = null;
 let nosServer = null;
 let nosService = null;
-let nosCtrlChar = null;
+let nosModules = [];
 let nosStatChar = null;
 
 const NOS_BLE = {
