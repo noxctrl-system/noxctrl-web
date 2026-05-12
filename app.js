@@ -1,7 +1,5 @@
-let nosServer = null;
-let nosService = null;
 let nosModules = [];
-let nosStatChar = null;
+
 
 const NOS_BLE = {
   name: "Nos-Control",
