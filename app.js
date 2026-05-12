@@ -45,27 +45,47 @@ async function connectNosModule() {
   try {
     setScanStatus("Nos-Modul auswählen ...", "yellow");
 
-    nosDevice = await navigator.bluetooth.requestDevice({
-      filters: [
-        { name: NOS_BLE.name }
-      ],
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: NOS_BLE.name }],
       optionalServices: [NOS_BLE.serviceUuid]
     });
 
-    nosDevice.addEventListener("gattserverdisconnected", handleNosDisconnected);
+    const alreadyConnected = nosModules.some(m => m.device.id === device.id);
+
+    if (alreadyConnected) {
+      setScanStatus("Dieses Nos-Modul ist bereits verbunden", "green");
+      return true;
+    }
+
+    device.addEventListener("gattserverdisconnected", () => {
+      handleNosDisconnected(device.id);
+    });
 
     setScanStatus("Verbinde mit Nos-Modul ...", "yellow");
 
-    nosServer = await nosDevice.gatt.connect();
-    nosService = await nosServer.getPrimaryService(NOS_BLE.serviceUuid);
-    nosCtrlChar = await nosService.getCharacteristic(NOS_BLE.ctrlUuid);
-    nosStatChar = await nosService.getCharacteristic(NOS_BLE.statUuid);
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(NOS_BLE.serviceUuid);
+    const ctrlChar = await service.getCharacteristic(NOS_BLE.ctrlUuid);
+    const statChar = await service.getCharacteristic(NOS_BLE.statUuid);
 
-    await setupNosNotifications();
+    const module = {
+      id: device.id,
+      name: device.name || "Nos-Control",
+      device,
+      server,
+      service,
+      ctrlChar,
+      statChar,
+      lastStatus: ""
+    };
 
-    setScanStatus(`Verbunden: ${nosDevice.name}`, "green");
+    nosModules.push(module);
 
-    await sendCommand("STATUS");
+    await setupNosNotifications(module);
+
+    setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
+
+    await sendToNosModule(module, "STATUS");
 
     return true;
   } catch (error) {
@@ -75,33 +95,36 @@ async function connectNosModule() {
   }
 }
 
-async function setupNosNotifications() {
-  if (!nosStatChar) return;
+async function setupNosNotifications(module) {
+  if (!module?.statChar) return;
 
   try {
-    await nosStatChar.startNotifications();
+    await module.statChar.startNotifications();
 
-    nosStatChar.addEventListener("characteristicvaluechanged", event => {
+    module.statChar.addEventListener("characteristicvaluechanged", event => {
       const value = event.target.value;
       const text = new TextDecoder().decode(value);
 
-      console.log("NOS STATUS:", text);
-      setScanStatus(`Status: ${text}`, "green");
+      module.lastStatus = text;
+
+      console.log(`NOS STATUS [${module.name}]:`, text);
+      setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
     });
   } catch (error) {
     console.warn("Nos Notifications konnten nicht aktiviert werden:", error);
   }
 }
 
-function handleNosDisconnected() {
-  console.log("Nos-Modul getrennt");
+function handleNosDisconnected(deviceId) {
+  console.log("Nos-Modul getrennt:", deviceId);
 
-  nosServer = null;
-  nosService = null;
-  nosCtrlChar = null;
-  nosStatChar = null;
+  nosModules = nosModules.filter(m => m.id !== deviceId);
 
-  setScanStatus("Nos-Modul getrennt", "yellow");
+  if (nosModules.length > 0) {
+    setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
+  } else {
+    setScanStatus("Keine Nos-Module verbunden", "yellow");
+  }
 }
 
 function setScanStatus(text, color) {
@@ -116,28 +139,46 @@ function setScanStatus(text, color) {
   }
 }
 
-async function sendBleCommand(command) {
-  if (!nosCtrlChar) {
-    const connected = await connectNosModule();
-    if (!connected) return;
-  }
-
+async function sendToNosModule(module, command) {
   try {
     const encoder = new TextEncoder();
     const data = encoder.encode(command);
 
-    await nosCtrlChar.writeValue(data);
+    await module.ctrlChar.writeValue(data);
 
-    console.log("BLE SEND:", command);
-    setScanStatus(`Gesendet: ${command}`, "green");
+    console.log(`BLE SEND [${module.name}]:`, command);
+    return true;
   } catch (error) {
-    console.error("Senden fehlgeschlagen:", error);
-    setScanStatus("Senden fehlgeschlagen", "yellow");
-
-    nosCtrlChar = null;
+    console.error(`Senden fehlgeschlagen [${module.name}]:`, error);
+    return false;
   }
 }
 
+async function sendBleCommand(command) {
+  if (nosModules.length === 0) {
+    const connected = await connectNosModule();
+    if (!connected) return;
+  }
+
+  let successCount = 0;
+
+  for (const module of [...nosModules]) {
+    const ok = await sendToNosModule(module, command);
+    if (ok) successCount += 1;
+
+    await sleep(40);
+  }
+
+  if (successCount > 0) {
+    setScanStatus(`Gesendet an ${successCount} Nos-Modul(e): ${command}`, "green");
+  } else {
+    setScanStatus("Senden fehlgeschlagen", "yellow");
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 async function sendCommand(command) {
   console.log("SEND:", command);
   await sendBleCommand(command);
