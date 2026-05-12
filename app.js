@@ -81,6 +81,14 @@ async function connectNosModule() {
 
     nosModules.push(module);
 
+    console.log("NOS MODULES:", nosModules.map(m => ({
+      id: m.id,
+      name: m.name,
+      connected: m.device?.gatt?.connected
+    })));
+    
+    renderNosModuleList();
+    
     await setupNosNotifications(module);
 
     setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
@@ -120,6 +128,8 @@ function handleNosDisconnected(deviceId) {
 
   nosModules = nosModules.filter(m => m.id !== deviceId);
 
+  renderNosModuleList();
+
   if (nosModules.length > 0) {
     setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
   } else {
@@ -139,6 +149,22 @@ function setScanStatus(text, color) {
   }
 }
 
+function renderNosModuleList() {
+  const list = document.getElementById("nosModuleList");
+  if (!list) return;
+
+  if (nosModules.length === 0) {
+    list.textContent = "Keine Nos-Module verbunden.";
+    return;
+  }
+
+  list.innerHTML = nosModules
+    .map((module, index) => {
+      const connected = module.device?.gatt?.connected ? "verbunden" : "getrennt";
+      return `Nos ${index + 1}: ${module.name} (${connected})`;
+    })
+    .join("<br>");
+}
 async function sendToNosModule(module, command) {
   try {
     const encoder = new TextEncoder();
@@ -153,21 +179,31 @@ async function sendToNosModule(module, command) {
     return false;
   }
 }
-
 async function sendBleCommand(command) {
   if (nosModules.length === 0) {
     const connected = await connectNosModule();
     if (!connected) return;
   }
 
+  console.log("SEND TO MODULE COUNT:", nosModules.length);
+
   let successCount = 0;
 
   for (const module of [...nosModules]) {
+    console.log("TRY SEND:", module.name, module.id, module.device?.gatt?.connected);
+
+    if (!module.device?.gatt?.connected) {
+      console.warn("Überspringe getrenntes Modul:", module.name);
+      continue;
+    }
+
     const ok = await sendToNosModule(module, command);
     if (ok) successCount += 1;
 
-    await sleep(40);
+    await sleep(80);
   }
+
+  renderNosModuleList();
 
   if (successCount > 0) {
     setScanStatus(`Gesendet an ${successCount} Nos-Modul(e): ${command}`, "green");
