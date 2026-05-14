@@ -663,11 +663,14 @@ function renderBoxTable() {
 
   tbody.appendChild(createAllRow());
 
-  state.boxes
-    .filter(box => box.online)
-    .forEach(box => {
-      tbody.appendChild(createBoxRow(box));
-    });
+  boxModules
+  .filter(module => module.slot >= 1 && module.device?.gatt?.connected)
+  .forEach(module => {
+    const box = state.boxes.find(b => b.slot === module.slot);
+    if (!box) return;
+
+    tbody.appendChild(createBoxRow(box));
+  });
 }
 
 function createAllRow() {
