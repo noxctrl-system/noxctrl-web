@@ -298,11 +298,6 @@ select:focus-visible {
   flex-wrap: wrap;
 }
 
-#disturbanceStatus {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
 
 .toggle-button,
 .scan-button {
@@ -490,10 +485,6 @@ select:focus-visible {
     font-size: 19px;
     border-radius: 18px;
     padding: 0 18px;
-  }
-
-  #disturbanceStatus {
-    font-size: 20px;
   }
 
   .toggle-button,
