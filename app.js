@@ -1,5 +1,6 @@
 let nosModules = [];
 
+const APP_VERSION = "v0.2-multi-ble";
 
 const NOS_BLE = {
   name: "Nos-Control",
@@ -275,6 +276,9 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDelayedStartUI();
   renderDisturbanceUI();
   renderBoxTable();
+
+  const v = document.getElementById("appVersion");
+  if (v) v.textContent = APP_VERSION;
 });
 
 function setupNosConnectButton() {
