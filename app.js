@@ -1,4 +1,5 @@
 let nosModules = [];
+let boxModules = [];
 const APP_VERSION = "v0.5-multi-ble-clean";
 
 const NOS_BLE = {
@@ -6,6 +7,13 @@ const NOS_BLE = {
   serviceUuid: "12345678-1234-1234-1234-1234567890ab",
   ctrlUuid: "12345678-1234-1234-1234-1234567890ac",
   statUuid: "12345678-1234-1234-1234-1234567890ad"
+};
+
+const BOX_BLE = {
+  name: "Box-Control",
+  serviceUuid: "7d8c3a10-2f6a-4b8e-9e10-1f0b2f6a0001",
+  ctrlUuid: "7d8c3a10-2f6a-4b8e-9e10-1f0b2f6a0002",
+  statUuid: "7d8c3a10-2f6a-4b8e-9e10-1f0b2f6a0003"
 };
 
 const state = {
