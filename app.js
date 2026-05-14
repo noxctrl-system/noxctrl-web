@@ -22,7 +22,7 @@ const state = {
   mode: "off",
 
   delayedStart: {
-    drivers: 12,
+    drivers: 3,
     laps: 5
   },
   
