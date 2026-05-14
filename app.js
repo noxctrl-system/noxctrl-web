@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v0.8-nos-recon";
+const APP_VERSION = "v0.9-nos-recon";
 
 const RECONNECT_DELAY = 2000;
 
