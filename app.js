@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v0.7-box-ble";
+const APP_VERSION = "v0.8-nos-recon";
 
 const RECONNECT_DELAY = 2000;
 
@@ -51,10 +51,15 @@ async function connectNosModule() {
       optionalServices: [NOS_BLE.serviceUuid]
     });
 
-    const alreadyConnected = nosModules.some(m => m.device.id === device.id);
-
-    if (alreadyConnected) {
-      setScanStatus("Dieses Nos-Modul ist bereits verbunden", "green");
+    const existing = nosModules.find(m => m.device.id === device.id);
+    
+    if (existing) {
+      if (existing.device?.gatt?.connected) {
+        setScanStatus("Dieses Nos-Modul ist bereits verbunden", "green");
+        return true;
+      }
+    
+      await reconnectNosModule(existing);
       return true;
     }
 
@@ -71,7 +76,7 @@ async function connectNosModule() {
 
     const module = {
       id: device.id,
-      name: device.name || "Box-Control",
+      name: device.name || "Nos-Control",
       device,
       server,
       service,
@@ -131,15 +136,76 @@ async function setupNosNotifications(module) {
 function handleNosDisconnected(deviceId) {
   console.log("Nos-Modul getrennt:", deviceId);
 
-  nosModules = nosModules.filter(m => m.id !== deviceId);
+  const module = nosModules.find(m => m.id === deviceId);
+  if (!module) return;
 
   renderNosModuleList();
+  setScanStatus("Nos-Verbindung verloren – reconnect…", "yellow");
 
-  if (nosModules.length > 0) {
+  reconnectNosModule(module);
+}
+
+async function reconnectNosModule(module) {
+  if (!module || module.reconnecting) return;
+
+  module.reconnecting = true;
+  console.log("Nos Reconnect starte:", module.name);
+
+  try {
+    await sleep(RECONNECT_DELAY);
+
+    const server = await module.device.gatt.connect();
+    const service = await server.getPrimaryService(NOS_BLE.serviceUuid);
+    const ctrlChar = await service.getCharacteristic(NOS_BLE.ctrlUuid);
+    const statChar = await service.getCharacteristic(NOS_BLE.statUuid);
+
+    module.server = server;
+    module.service = service;
+    module.ctrlChar = ctrlChar;
+    module.statChar = statChar;
+
+    await setupNosNotifications(module);
+    await sendToNosModule(module, "STATUS");
+
+    module.reconnecting = false;
+
+    renderNosModuleList();
     setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
-  } else {
-    setScanStatus("Keine Nos-Module verbunden", "yellow");
+
+    await syncNosModuleState(module);
+
+  } catch (err) {
+    console.warn("Nos Reconnect fehlgeschlagen:", err);
+
+    module.reconnecting = false;
+
+    setTimeout(() => reconnectNosModule(module), 3000);
   }
+}
+
+async function syncNosModuleState(module) {
+  if (!module.device?.gatt?.connected) return;
+
+  await sleep(80);
+
+  if (state.mode === "run") {
+    await sendToNosModule(module, "PASS=OFF");
+    await sleep(80);
+    await sendToNosModule(module, "MODE=RUN");
+    return;
+  }
+
+  if (state.mode === "delayed") {
+    await sendToNosModule(module, `DSTART=${state.delayedStart.drivers},${state.delayedStart.laps}`);
+    return;
+  }
+
+  // OFF
+  await sendToNosModule(module, "PASS=OFF");
+  await sleep(80);
+  await sendToNosModule(module, "RESET");
+  await sleep(80);
+  await sendToNosModule(module, "MODE=IDLE");
 }
 
 function setScanStatus(text, color) {
