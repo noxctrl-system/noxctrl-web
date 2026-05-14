@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v0.5-multi-ble-clean";
+const APP_VERSION = "v0.6-box-ble";
 
 const NOS_BLE = {
   name: "Nos-Control",
@@ -168,6 +168,36 @@ function renderNosModuleList() {
     .join("<br>");
 }
 
+function setBoxStatus(text, color) {
+  const statusText = document.getElementById("boxStatusText");
+  const dot = document.getElementById("boxStatusDot");
+
+  if (statusText) statusText.textContent = text;
+
+  if (dot) {
+    dot.classList.remove("green", "yellow");
+    dot.classList.add(color);
+  }
+}
+
+function renderBoxModuleList() {
+  const list = document.getElementById("boxModuleList");
+  if (!list) return;
+
+  if (boxModules.length === 0) {
+    list.textContent = "Keine Box-Module verbunden.";
+    return;
+  }
+
+  list.innerHTML = boxModules
+    .map((module, index) => {
+      const connected = module.device?.gatt?.connected ? "verbunden" : "getrennt";
+      const slotText = module.slot ? `Slot ${module.slot}` : "Slot unbekannt";
+      return `Box ${index + 1}: ${slotText} · ${connected}`;
+    })
+    .join("<br>");
+}
+
 async function sendToNosModule(module, command) {
   try {
     const encoder = new TextEncoder();
@@ -182,6 +212,171 @@ async function sendToNosModule(module, command) {
     return false;
   }
 }
+
+async function connectBoxModule() {
+  if (!navigator.bluetooth) {
+    alert("Web Bluetooth wird auf diesem Gerät oder Browser nicht unterstützt.");
+    setBoxStatus("Web Bluetooth nicht unterstützt", "yellow");
+    return false;
+  }
+
+  try {
+    setBoxStatus("Box-Modul auswählen ...", "yellow");
+
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: BOX_BLE.name }],
+      optionalServices: [BOX_BLE.serviceUuid]
+    });
+
+    const alreadyConnected = boxModules.some(m => m.device.id === device.id);
+
+    if (alreadyConnected) {
+      setBoxStatus("Dieses Box-Modul ist bereits verbunden", "green");
+      return true;
+    }
+
+    device.addEventListener("gattserverdisconnected", () => {
+      handleBoxDisconnected(device.id);
+    });
+
+    setBoxStatus("Verbinde mit Box-Modul ...", "yellow");
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(BOX_BLE.serviceUuid);
+    const ctrlChar = await service.getCharacteristic(BOX_BLE.ctrlUuid);
+    const statChar = await service.getCharacteristic(BOX_BLE.statUuid);
+
+    const module = {
+      id: device.id,
+      name: device.name || "Box-Control",
+      device,
+      server,
+      service,
+      ctrlChar,
+      statChar,
+      slot: null,
+      lastStatus: ""
+    };
+
+    boxModules.push(module);
+
+    await setupBoxNotifications(module);
+    await sendToBoxModule(module, "STATUS");
+
+    renderBoxModuleList();
+    setBoxStatus(`${boxModules.length} Box-Modul(e) verbunden`, "green");
+
+    return true;
+  } catch (error) {
+    console.error("Box BLE Verbindung fehlgeschlagen:", error);
+    setBoxStatus("Box-Verbindung fehlgeschlagen", "yellow");
+    return false;
+  }
+}
+
+async function setupBoxNotifications(module) {
+  if (!module?.statChar) return;
+
+  try {
+    await module.statChar.startNotifications();
+
+    module.statChar.addEventListener("characteristicvaluechanged", event => {
+      const value = event.target.value;
+      const text = new TextDecoder().decode(value);
+
+      module.lastStatus = text;
+
+      console.log(`BOX STATUS [${module.name}]:`, text);
+      handleBoxStatus(module, text);
+    });
+  } catch (error) {
+    console.warn("Box Notifications konnten nicht aktiviert werden:", error);
+  }
+}
+
+function handleBoxStatus(module, text) {
+  const data = parseStatusLine(text);
+
+  if (data.SLOT) {
+    module.slot = Number(data.SLOT);
+  }
+
+  const slot = module.slot;
+
+  if (slot >= 1 && slot <= 4) {
+    const box = state.boxes.find(b => b.slot === slot);
+
+    if (box) {
+      box.online = true;
+
+      if (data.G && data.K && data.L && data.W) {
+        box.params = {
+          G: Number(data.G),
+          K: Number(data.K),
+          L: Number(data.L),
+          W: Number(data.W)
+        };
+
+        box.draft = { ...box.params };
+      }
+    }
+  }
+
+  renderBoxTable();
+  renderBoxModuleList();
+  setBoxStatus(`${boxModules.length} Box-Modul(e) verbunden`, "green");
+}
+
+function parseStatusLine(text) {
+  const data = {};
+
+  text.split(";").forEach(part => {
+    const [key, value] = part.split("=");
+    if (key && value !== undefined) {
+      data[key.trim()] = value.trim();
+    }
+  });
+
+  return data;
+}
+
+async function sendToBoxModule(module, command) {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(command);
+
+    await module.ctrlChar.writeValue(data);
+
+    console.log(`BOX SEND [${module.name}]:`, command);
+    return true;
+  } catch (error) {
+    console.error(`Box senden fehlgeschlagen [${module.name}]:`, error);
+    return false;
+  }
+}
+
+function handleBoxDisconnected(deviceId) {
+  console.log("Box-Modul getrennt:", deviceId);
+
+  const disconnected = boxModules.find(m => m.id === deviceId);
+
+  if (disconnected?.slot) {
+    const box = state.boxes.find(b => b.slot === disconnected.slot);
+    if (box) box.online = false;
+  }
+
+  boxModules = boxModules.filter(m => m.id !== deviceId);
+
+  renderBoxTable();
+  renderBoxModuleList();
+
+  if (boxModules.length > 0) {
+    setBoxStatus(`${boxModules.length} Box-Modul(e) verbunden`, "green");
+  } else {
+    setBoxStatus("Keine Box-Module verbunden", "yellow");
+  }
+}
+
 async function sendBleCommand(command) {
   if (nosModules.length === 0) {
     const connected = await connectNosModule();
@@ -240,13 +435,43 @@ async function commandNosDelayedStart(drivers, laps) {
 }
 
 async function commandSendBoxConfig(slot, params) {
-  await sendCommand(`BOX${slot}: CFG=${params.G},${params.K},${params.L},${params.W}`);
-  await sendCommand(`BOX${slot}: STATUS`);
+  const module = boxModules.find(m => m.slot === slot && m.device?.gatt?.connected);
+
+  if (!module) {
+    setBoxStatus(`Box ${slot} ist nicht verbunden`, "yellow");
+    return;
+  }
+
+  const ok = await sendToBoxModule(module, `CFG=${params.G},${params.K},${params.L},${params.W}`);
+
+  if (ok) {
+    setBoxStatus(`Parameter an Box ${slot} gesendet`, "green");
+    await sleep(80);
+    await sendToBoxModule(module, "STATUS");
+  } else {
+    setBoxStatus(`Senden an Box ${slot} fehlgeschlagen`, "yellow");
+  }
 }
 
 async function commandSendAllBoxes(params) {
-  await sendCommand(`ALL BOXES: CFG=${params.G},${params.K},${params.L},${params.W}`);
-  await sendCommand("ALL BOXES: STATUS");
+  let successCount = 0;
+
+  for (const module of boxModules) {
+    if (!module.slot || !module.device?.gatt?.connected) continue;
+
+    const ok = await sendToBoxModule(module, `CFG=${params.G},${params.K},${params.L},${params.W}`);
+    if (ok) successCount += 1;
+
+    await sleep(80);
+    await sendToBoxModule(module, "STATUS");
+    await sleep(80);
+  }
+
+  if (successCount > 0) {
+    setBoxStatus(`Parameter an ${successCount} Box-Modul(e) gesendet`, "green");
+  } else {
+    setBoxStatus("Keine verbundenen Box-Module gefunden", "yellow");
+  }
 }
 
 async function commandSearchAndRead() {
@@ -261,6 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (v) v.textContent = APP_VERSION;
 
   setupNosConnectButton();
+  setupBoxConnectButton();
   setupModeButtons();
   setupDelayedStartModal();
   renderDelayedStartUI();
@@ -279,6 +505,19 @@ function setupNosConnectButton() {
 
   button.addEventListener("click", async () => {
     await connectNosModule();
+  });
+}
+
+function setupBoxConnectButton() {
+  const button = document.getElementById("connectBoxButton");
+
+  if (!button) {
+    console.error("connectBoxButton nicht gefunden");
+    return;
+  }
+
+  button.addEventListener("click", async () => {
+    await connectBoxModule();
   });
 }
 
