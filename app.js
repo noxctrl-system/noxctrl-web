@@ -1,6 +1,8 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v0.6-box-ble";
+const APP_VERSION = "v0.7-box-ble";
+
+const RECONNECT_DELAY = 2000;
 
 const NOS_BLE = {
   name: "Nos-Control",
@@ -69,13 +71,15 @@ async function connectNosModule() {
 
     const module = {
       id: device.id,
-      name: device.name || "Nos-Control",
+      name: device.name || "Box-Control",
       device,
       server,
       service,
       ctrlChar,
       statChar,
-      lastStatus: ""
+      slot: null,
+      lastStatus: "",
+      reconnecting: false   // 🔥 neu
     };
 
     nosModules.push(module);
@@ -228,11 +232,17 @@ async function connectBoxModule() {
       optionalServices: [BOX_BLE.serviceUuid]
     });
 
-    const alreadyConnected = boxModules.some(m => m.device.id === device.id);
+    const existing = boxModules.find(m => m.id === device.id);
 
-    if (alreadyConnected) {
-      setBoxStatus("Dieses Box-Modul ist bereits verbunden", "green");
-      return true;
+    if (existing) {
+      if (existing.device?.gatt?.connected) {
+        setBoxStatus("Bereits verbunden", "green");
+        return true;
+      } else {
+        // reconnect nutzen
+        await reconnectBoxModule(existing);
+        return true;
+      }
     }
 
     device.addEventListener("gattserverdisconnected", () => {
@@ -358,22 +368,59 @@ async function sendToBoxModule(module, command) {
 function handleBoxDisconnected(deviceId) {
   console.log("Box-Modul getrennt:", deviceId);
 
-  const disconnected = boxModules.find(m => m.id === deviceId);
+  const module = boxModules.find(m => m.id === deviceId);
+  if (!module) return;
 
-  if (disconnected?.slot) {
-    const box = state.boxes.find(b => b.slot === disconnected.slot);
+  // UI aktualisieren
+  if (module.slot) {
+    const box = state.boxes.find(b => b.slot === module.slot);
     if (box) box.online = false;
   }
 
-  boxModules = boxModules.filter(m => m.id !== deviceId);
-
   renderBoxTable();
   renderBoxModuleList();
+  setBoxStatus("Verbindung verloren – reconnect…", "yellow");
 
-  if (boxModules.length > 0) {
-    setBoxStatus(`${boxModules.length} Box-Modul(e) verbunden`, "green");
-  } else {
-    setBoxStatus("Keine Box-Module verbunden", "yellow");
+  // 🔥 NICHT entfernen!
+  reconnectBoxModule(module);
+}
+
+async function reconnectBoxModule(module) {
+  if (!module || module.reconnecting) return;
+
+  module.reconnecting = true;
+  console.log("Reconnect starte:", module.name);
+
+  try {
+    await sleep(RECONNECT_DELAY);
+
+    if (!module.device) throw new Error("Kein Device");
+
+    const server = await module.device.gatt.connect();
+    const service = await server.getPrimaryService(BOX_BLE.serviceUuid);
+    const ctrlChar = await service.getCharacteristic(BOX_BLE.ctrlUuid);
+    const statChar = await service.getCharacteristic(BOX_BLE.statUuid);
+
+    module.server = server;
+    module.service = service;
+    module.ctrlChar = ctrlChar;
+    module.statChar = statChar;
+
+    await setupBoxNotifications(module);
+    await sendToBoxModule(module, "STATUS");
+
+    module.reconnecting = false;
+
+    console.log("Reconnect erfolgreich:", module.name);
+    setBoxStatus("Reconnect erfolgreich", "green");
+
+  } catch (err) {
+    console.warn("Reconnect fehlgeschlagen:", err);
+
+    module.reconnecting = false;
+
+    // 🔁 retry
+    setTimeout(() => reconnectBoxModule(module), 3000);
   }
 }
 
