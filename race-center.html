@@ -27,32 +27,42 @@
     </header>
     
     <section class="glass-card">
-      <h2>Modes</h2>
+      <h2>Nos Module</h2>
+    
+      <h3 class="card-section-title">Modes</h3>
       <div class="mode-stack">
-        <button class="mode-button active" data-mode="off">Nos Module deaktiviert</button>
+        <button class="mode-button active" data-mode="off">Nos-Module deaktiviert</button>
         <button class="mode-button" data-mode="run">Rennbetrieb</button>
-        <button class="mode-button" data-mode="delayed" id="openDelayedStartButton">Verzögerter Rennbetrieb</button>
+        <button class="mode-button" data-mode="delayed" id="openDelayedStartButton">Verzögerter Start</button>
       </div>
-    </section>
-
-    <section class="glass-card">
-      <h2>Verbindungen</h2>
+    
+      <div class="card-divider"></div>
+    
+      <h3 class="card-section-title">Verbindungen</h3>
       <p class="card-subtext">Nos-Module hinzufügen und gemeinsam steuern.</p>
-
+    
       <div class="connection-top">
         <p class="card-subtext">Module müssen zuerst einzeln hinzugefügt werden, bleiben aber dann verbunden.</p>
+    
         <button class="scan-button" id="connectNosButton">+ Nos-Modul hinzufügen</button>
+    
         <div class="connection-status">
           <span id="scanStatusDot" class="status-dot yellow"></span>
           <span id="scanStatusText">Bereit</span>
         </div>
-        
+    
         <div id="nosModuleList" class="card-subtext">
           Keine Nos-Module verbunden.
         </div>
-        </div>
-        
-        <div class="table-wrap">
+      </div>
+    </section>
+    
+    <section class="glass-card">
+      <h2>Box Module</h2>
+    
+      <p class="card-subtext">Box-Parameter einstellen und später an verbundene Box-Module senden.</p>
+    
+      <div class="table-wrap">
         <table class="params-table">
           <thead>
             <tr>
@@ -117,6 +127,6 @@
   </div>
 </div>
   
-<script src="app.js?v=0.2"></script>
+<script src="app.js?v=0.3"></script>
 </body>
 </html>
