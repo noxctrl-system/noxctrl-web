@@ -1,6 +1,6 @@
 let nosModules = [];
 
-const APP_VERSION = "v0.2-multi-ble";
+const APP_VERSION = "v0.3-multi-ble";
 
 const NOS_BLE = {
   name: "Nos-Control",
