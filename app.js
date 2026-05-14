@@ -1,5 +1,5 @@
 let nosModules = [];
-const APP_VERSION = "v0.4-nos-box-layout";
+const APP_VERSION = "v0.5-multi-ble-clean";
 
 const NOS_BLE = {
   name: "Nos-Control",
@@ -74,20 +74,18 @@ async function connectNosModule() {
 
     renderNosModuleList();
     setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
-    
+
     console.log("NOS MODULES:", nosModules.map(m => ({
       id: m.id,
       name: m.name,
       connected: m.device?.gatt?.connected
     })));
-    
-    
-    
+
     await setupNosNotifications(module);
 
     setScanStatus(`${nosModules.length} Nos-Modul(e) verbunden`, "green");
     renderNosModuleList();
-    
+
     await sendToNosModule(module, "STATUS");
 
     return true;
@@ -266,15 +264,12 @@ document.addEventListener("DOMContentLoaded", () => {
 function setupNosConnectButton() {
   const button = document.getElementById("connectNosButton");
 
-  console.log("connectNosButton:", button);
-
   if (!button) {
     console.error("connectNosButton nicht gefunden");
     return;
   }
 
   button.addEventListener("click", async () => {
-    console.log("Nos connect button clicked");
     await connectNosModule();
   });
 }
