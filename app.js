@@ -1,5 +1,5 @@
 let nosModules = [];
-const APP_VERSION = "v0.3-nos-box-layout";
+const APP_VERSION = "v0.4-nos-box-layout";
 
 const NOS_BLE = {
   name: "Nos-Control",
@@ -251,22 +251,30 @@ async function commandSearchAndRead() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupModeButtons();
-  setupDelayedStartModal();
-  setupNosConnectButton();
-  renderDelayedStartUI();
-  renderBoxTable();
-
   const v = document.getElementById("appVersion");
   if (v) v.textContent = APP_VERSION;
+
+  setupNosConnectButton();
+  setupModeButtons();
+  setupDelayedStartModal();
+  renderDelayedStartUI();
+
+  // Box-Tabelle testweise zuletzt
+  renderBoxTable();
 });
 
 function setupNosConnectButton() {
   const button = document.getElementById("connectNosButton");
 
-  if (!button) return;
+  console.log("connectNosButton:", button);
+
+  if (!button) {
+    console.error("connectNosButton nicht gefunden");
+    return;
+  }
 
   button.addEventListener("click", async () => {
+    console.log("Nos connect button clicked");
     await connectNosModule();
   });
 }
