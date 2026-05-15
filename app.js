@@ -21,6 +21,12 @@ const BOX_BLE = {
 const state = {
   mode: "off",
 
+  runMode: {
+    mode: "LEGACY",
+    baseSec: 3,
+    catchupC: 8
+  },
+
   delayedStart: {
     drivers: 3,
     laps: 5
