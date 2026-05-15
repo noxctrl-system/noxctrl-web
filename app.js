@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v0.9-nos-recon";
+const APP_VERSION = "v1.0-nos-runmode-settings";
 
 const RECONNECT_DELAY = 2000;
 
@@ -171,8 +171,26 @@ async function reconnectNosModule(module) {
     module.statChar = statChar;
 
     await setupNosNotifications(module);
-    await sendToNosModule(module, "STATUS");
 
+    // 🔄 Status holen
+    await sendToNosModule(module, "STATUS");
+    await sleep(80);
+    
+    // 🔥 RunMode + Parameter wiederherstellen
+    await sendToNosModule(module, `RUNMODE=${state.runMode.mode}`);
+    await sleep(80);
+    
+    if (state.runMode.mode === "NO_CATCHUP" || state.runMode.mode === "YES_CATCHUP") {
+      await sendToNosModule(module, `BASE=${state.runMode.baseSec}`);
+      await sleep(80);
+    }
+    
+    if (state.runMode.mode === "YES_CATCHUP") {
+      await sendToNosModule(module, `C=${state.runMode.catchupC}`);
+      await sleep(80);
+    }
+    
+    // danach erst fertig
     module.reconnecting = false;
 
     renderNosModuleList();
@@ -608,6 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupBoxConnectButton();
   setupModeButtons();
   setupDelayedStartModal();
+  setupNosSettingsModal();
   renderDelayedStartUI();
 
   // Box-Tabelle testweise zuletzt
@@ -741,6 +760,133 @@ function setupDelayedStartModal() {
       closeDelayedStartModal();
     });
   }
+}
+
+function setupNosSettingsModal() {
+  const openButton = document.getElementById("openNosSettingsButton");
+  const closeButton = document.getElementById("closeNosSettingsButton");
+  const modal = document.getElementById("nosSettingsModal");
+  const applyButton = document.getElementById("nosSettingsApplyButton");
+
+  const baseRange = document.getElementById("baseSecRange");
+  const catchupRange = document.getElementById("catchupCRange");
+
+  if (openButton) {
+    openButton.addEventListener("click", openNosSettingsModal);
+  }
+
+  if (closeButton) {
+    closeButton.addEventListener("click", closeNosSettingsModal);
+  }
+
+  if (modal) {
+    modal.addEventListener("click", event => {
+      if (event.target === modal) closeNosSettingsModal();
+    });
+  }
+
+  document.querySelectorAll("[data-runmode]").forEach(button => {
+    button.addEventListener("click", () => {
+      state.runMode.mode = button.dataset.runmode;
+      renderNosSettingsUI();
+    });
+  });
+
+  if (baseRange) {
+    baseRange.addEventListener("input", event => {
+      state.runMode.baseSec = Number(event.target.value);
+      renderNosSettingsUI();
+    });
+  }
+
+  if (catchupRange) {
+    catchupRange.addEventListener("input", event => {
+      state.runMode.catchupC = Number(event.target.value);
+      renderNosSettingsUI();
+    });
+  }
+
+  if (applyButton) {
+    applyButton.addEventListener("click", async () => {
+      await applyNosRunModeSettings();
+      closeNosSettingsModal();
+    });
+  }
+}
+
+function openNosSettingsModal() {
+  const modal = document.getElementById("nosSettingsModal");
+  if (!modal) return;
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  renderNosSettingsUI();
+}
+
+function closeNosSettingsModal() {
+  const modal = document.getElementById("nosSettingsModal");
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function renderNosSettingsUI() {
+  const mode = state.runMode.mode;
+  const base = state.runMode.baseSec;
+  const c = state.runMode.catchupC;
+
+  const baseRange = document.getElementById("baseSecRange");
+  const baseValue = document.getElementById("baseSecValue");
+  const catchupRange = document.getElementById("catchupCRange");
+  const catchupValue = document.getElementById("catchupCValue");
+  const catchupSection = document.getElementById("catchupSection");
+  const hint = document.getElementById("runModeHint");
+
+  if (baseRange) baseRange.value = base;
+  if (baseValue) baseValue.textContent = base;
+  if (catchupRange) catchupRange.value = c;
+  if (catchupValue) catchupValue.textContent = c;
+
+  document.querySelectorAll("[data-runmode]").forEach(button => {
+    button.classList.toggle("active", button.dataset.runmode === mode);
+  });
+
+  if (catchupSection) {
+    catchupSection.style.display = mode === "YES_CATCHUP" ? "block" : "none";
+  }
+
+  if (hint) {
+    if (mode === "NO_CATCHUP") {
+      hint.textContent = `Jeder für sich: Limit bleibt fix bei ${base}s. Keine Aufholmechanik.`;
+    } else if (mode === "YES_CATCHUP") {
+      const halfUp = Math.ceil(c / 2);
+      hint.textContent = `Aufholmechanik: Base ${base}s. Alle ${c} roten Intervalle +1s; bei Grün -${halfUp}.`;
+    } else {
+      hint.textContent = "Legacy: Standardmodus. Base ist firmwareseitig 3s, Aufholen alle 8 roten Intervalle.";
+    }
+  }
+}
+
+async function applyNosRunModeSettings() {
+  const mode = state.runMode.mode;
+  const base = state.runMode.baseSec;
+  const c = state.runMode.catchupC;
+
+  await sendCommand(`RUNMODE=${mode}`);
+  await sleep(80);
+
+  if (mode === "NO_CATCHUP" || mode === "YES_CATCHUP") {
+    await sendCommand(`BASE=${base}`);
+    await sleep(80);
+  }
+
+  if (mode === "YES_CATCHUP") {
+    await sendCommand(`C=${c}`);
+    await sleep(80);
+  }
+
+  await sendCommand("STATUS");
 }
 
 function openDelayedStartModal() {
