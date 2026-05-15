@@ -27,7 +27,10 @@
     </header>
     
     <section class="glass-card">
-      <h2>Nos Module</h2>
+      <div class="card-title-row">
+        <h2>Nos Module</h2>
+        <button class="icon-button" id="openNosSettingsButton" aria-label="Nos Einstellungen">⚙</button>
+      </div>
     
       <h3 class="card-section-title">Modes</h3>
       <div class="mode-stack">
@@ -118,7 +121,7 @@
           min="1"
           max="32"
           step="1"
-          value=""
+          value="3"
         />
         <span id="driversValue">3</span>
       </div>
@@ -144,6 +147,41 @@
     </button>
   </div>
 </div>
+    
+  <div id="nosSettingsModal" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+  
+      <div class="modal-header">
+        <h2>Nos-System</h2>
+        <button class="modal-close-button" id="closeNosSettingsButton">Abbrechen</button>
+      </div>
+  
+      <div class="modal-section">
+        <label class="modal-label">RunMode</label>
+        <div class="toggle-pill-row">
+          <button class="pill-button" data-runmode="LEGACY">Legacy</button>
+          <button class="pill-button" data-runmode="NO_CATCHUP">Jeder für sich</button>
+          <button class="pill-button" data-runmode="YES_CATCHUP">Aufholmechanik</button>
+        </div>
+      </div>
+  
+      <div class="modal-section">
+        <label class="modal-label">Base: <span id="baseSecValue">3</span>s</label>
+        <input id="baseSecRange" class="drivers-range" type="range" min="1" max="9" step="1" value="3" />
+        <p class="modal-hint" id="runModeHint">Legacy: fixer Standardmodus.</p>
+      </div>
+  
+      <div class="modal-section" id="catchupSection">
+        <label class="modal-label">Aufholen alle <span id="catchupCValue">8</span> roten Intervalle</label>
+        <input id="catchupCRange" class="drivers-range" type="range" min="1" max="64" step="1" value="8" />
+      </div>
+  
+      <button class="modal-start-button" id="nosSettingsApplyButton">
+        Anwenden
+      </button>
+    </div>
+  </div>
   
 <script src="app.js?v=0.9"></script>
 </body>
