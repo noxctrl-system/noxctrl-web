@@ -257,6 +257,30 @@ select:focus-visible {
   line-height: 1.45;
 }
 
+.card-title-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title-row h2 {
+  margin-bottom: 14px;
+}
+
+.icon-button {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: white;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
 .mode-stack {
   position: relative;
   display: flex;
