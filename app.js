@@ -1,6 +1,7 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v1.0-nos-runmode-settings";
+const APP_VERSION = "v1.1 : include_ChampionsMode";
+const CHAMPIONS_HISTORY_KEY = "champions.history.v1";
 
 const RECONNECT_DELAY = 2000;
 
@@ -39,7 +40,13 @@ const state = {
     { slot: 4, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } }
   ],
 
-  allDraft: { G: 8, K: 1, L: 3, W: 50 }
+  allDraft: { G: 8, K: 1, L: 3, W: 50 },
+
+  champions: {
+    orderedSlots: [],
+    proposedChanges: [],
+    sending: false
+  }
 };
 
 async function connectNosModule() {
@@ -355,7 +362,8 @@ async function connectBoxModule() {
       ctrlChar,
       statChar,
       slot: null,
-      lastStatus: ""
+      lastStatus: "",
+      lastStatusAt: 0
     };
 
     boxModules.push(module);
@@ -395,6 +403,7 @@ async function setupBoxNotifications(module) {
 }
 
 function handleBoxStatus(module, text) {
+  module.lastStatusAt = Date.now();
   const data = parseStatusLine(text);
 
   if (data.SLOT) {
@@ -627,6 +636,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupModeButtons();
   setupDelayedStartModal();
   setupNosSettingsModal();
+  setupChampionsMode();
   renderDelayedStartUI();
 
   // Box-Tabelle testweise zuletzt
@@ -1030,4 +1040,296 @@ function enforceKLessThanL(obj) {
   if (obj.L <= obj.K) {
     obj.K = Math.max(1, obj.L - 1);
   }
+}
+
+function setupChampionsMode() {
+  const openButton = document.getElementById("openChampionsButton");
+  const closeButton = document.getElementById("closeChampionsButton");
+  const modal = document.getElementById("championsModal");
+  const prepareButton = document.getElementById("championsPrepareButton");
+  const sendButton = document.getElementById("championsSendButton");
+  const editButton = document.getElementById("championsEditButton");
+  const resetButton = document.getElementById("championsResetButton");
+
+  openButton?.addEventListener("click", openChampionsMode);
+  closeButton?.addEventListener("click", closeChampionsMode);
+  modal?.addEventListener("click", event => {
+    if (event.target === modal && !state.champions.sending) closeChampionsMode();
+  });
+  prepareButton?.addEventListener("click", prepareChampionsChanges);
+  sendButton?.addEventListener("click", sendChampionsChanges);
+  editButton?.addEventListener("click", () => {
+    state.champions.proposedChanges = [];
+    renderChampionsMode();
+  });
+  resetButton?.addEventListener("click", () => {
+    if (!confirm("Ergebnisgeschichte wirklich zurücksetzen?")) return;
+    localStorage.removeItem(CHAMPIONS_HISTORY_KEY);
+    state.champions.proposedChanges = [];
+    renderChampionsMode();
+  });
+}
+
+function openChampionsMode() {
+  const modal = document.getElementById("championsModal");
+  if (!modal) return;
+
+  const connectedSlots = getConnectedBoxSlots();
+  const preserved = state.champions.orderedSlots.filter(slot => connectedSlots.includes(slot));
+  state.champions.orderedSlots = [
+    ...preserved,
+    ...connectedSlots.filter(slot => !preserved.includes(slot))
+  ];
+  state.champions.proposedChanges = [];
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  renderChampionsMode();
+
+  connectedSlots.forEach(slot => {
+    const module = boxModules.find(item => item.slot === slot && item.device?.gatt?.connected);
+    if (module) sendToBoxModule(module, "STATUS");
+  });
+}
+
+function closeChampionsMode() {
+  if (state.champions.sending) return;
+  document.getElementById("championsModal")?.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function getConnectedBoxSlots() {
+  return boxModules
+    .filter(module => module.slot >= 1 && module.slot <= 4 && module.device?.gatt?.connected)
+    .map(module => module.slot)
+    .filter((slot, index, slots) => slots.indexOf(slot) === index);
+}
+
+function moveChampionSlot(index, direction) {
+  if (state.champions.proposedChanges.length || state.champions.sending) return;
+  const target = index + direction;
+  if (target < 0 || target >= state.champions.orderedSlots.length) return;
+  const ordered = state.champions.orderedSlots;
+  [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+  renderChampionsMode();
+}
+
+function renderChampionsMode() {
+  const ranking = document.getElementById("championsRanking");
+  const empty = document.getElementById("championsEmpty");
+  const preview = document.getElementById("championsPreview");
+  const prepareButton = document.getElementById("championsPrepareButton");
+  const sendButton = document.getElementById("championsSendButton");
+  const editButton = document.getElementById("championsEditButton");
+  const historyCount = document.getElementById("championsHistoryCount");
+  const resetButton = document.getElementById("championsResetButton");
+  if (!ranking || !preview) return;
+
+  const slots = state.champions.orderedSlots;
+  const changes = state.champions.proposedChanges;
+  empty?.classList.toggle("hidden", slots.length >= 2);
+  ranking.classList.toggle("hidden", slots.length < 2 || changes.length > 0);
+  ranking.innerHTML = "";
+
+  slots.forEach((slot, index) => {
+    const box = state.boxes.find(item => item.slot === slot);
+    if (!box) return;
+    const item = document.createElement("li");
+    item.className = "champions-rank-item";
+    item.innerHTML = `
+      <span class="champions-place">${index + 1}.</span>
+      <span class="champions-box"><strong>BoxModul ${slot}</strong><small>${formatBoxParams(box.params)}</small></span>
+      <span class="champions-move">
+        <button aria-label="Box ${slot} nach oben" ${index === 0 ? "disabled" : ""}>↑</button>
+        <button aria-label="Box ${slot} nach unten" ${index === slots.length - 1 ? "disabled" : ""}>↓</button>
+      </span>`;
+    const moveButtons = item.querySelectorAll("button");
+    moveButtons[0].addEventListener("click", () => moveChampionSlot(index, -1));
+    moveButtons[1].addEventListener("click", () => moveChampionSlot(index, 1));
+    ranking.appendChild(item);
+  });
+
+  preview.classList.toggle("hidden", changes.length === 0);
+  preview.innerHTML = changes.map(change => `
+    <div class="champions-change" data-champions-slot="${change.slot}">
+      <div><strong>${change.placement}. · BoxModul ${change.slot}</strong><span class="champions-send-state"></span></div>
+      <div class="champions-values"><span>Alt ${formatBoxParams(change.old)}</span><b>→</b><span>Neu ${formatBoxParams(change.new)}</span></div>
+    </div>`).join("");
+
+  prepareButton?.classList.toggle("hidden", changes.length > 0);
+  if (prepareButton) prepareButton.disabled = slots.length < 2 || state.champions.sending;
+  sendButton?.classList.toggle("hidden", changes.length === 0);
+  editButton?.classList.toggle("hidden", changes.length === 0);
+  if (sendButton) sendButton.disabled = state.champions.sending;
+  if (editButton) editButton.disabled = state.champions.sending;
+
+  const history = getChampionsHistory();
+  if (historyCount) historyCount.textContent = history.length;
+  if (resetButton) resetButton.disabled = history.length === 0 || state.champions.sending;
+}
+
+function formatBoxParams(params) {
+  return `G${params.G} K${params.K} L${params.L} W${params.W}`;
+}
+
+function getChampionsHistory() {
+  try {
+    const history = JSON.parse(localStorage.getItem(CHAMPIONS_HISTORY_KEY) || "[]");
+    return Array.isArray(history) ? history : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeChampionsResult(placements) {
+  const history = getChampionsHistory();
+  history.push({ id: `${Date.now()}-${Math.random()}`, createdAt: new Date().toISOString(), placements });
+  localStorage.setItem(CHAMPIONS_HISTORY_KEY, JSON.stringify(history.slice(-40)));
+}
+
+function placementImpact(index, count) {
+  if (count === 4) return [2, 1, -1, -2][index];
+  if (count === 3) return [2, 0, -2][index];
+  if (count === 2) return [2, -2][index];
+  return 0;
+}
+
+function championsHistoryScore(slot, history) {
+  return history.slice(-10).reduce((score, entry) => {
+    const index = entry.placements.indexOf(slot);
+    return index < 0 ? score : score + placementImpact(index, entry.placements.length);
+  }, 0);
+}
+
+function championsPlacementStreak(slot, placementIndex, history) {
+  let streak = 0;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (history[index].placements.indexOf(slot) !== placementIndex) break;
+    streak += 1;
+  }
+  return streak;
+}
+
+function adjustChampionsKL(params, worsens) {
+  const options = [];
+  if (worsens) {
+    if (params.K + 1 < params.L && params.K < 9) options.push("K");
+    if (params.L < 10) options.push("L");
+  } else {
+    if (params.K > 1) options.push("K");
+    if (params.L > 2 && params.L - 1 > params.K) options.push("L");
+  }
+  if (!options.length) return;
+  const key = options[Math.floor(Math.random() * options.length)];
+  params[key] += worsens ? 1 : -1;
+}
+
+function balancedChampionsParameters(current, slot, placementIndex, participantCount, history) {
+  const impact = placementImpact(placementIndex, participantCount);
+  const result = { ...current };
+  if (!impact) return result;
+
+  const worsens = impact > 0;
+  const strong = Math.abs(impact) === 2;
+  const score = championsHistoryScore(slot, history);
+  const streak = championsPlacementStreak(slot, placementIndex, history);
+  const historyReinforces = (worsens && score > 0) || (!worsens && score < 0);
+
+  let wSteps = strong && Math.random() < 0.5 ? 2 : 1;
+  if (historyReinforces && Math.abs(score) >= 5) wSteps = 2;
+  const oldW = result.W;
+  result.W = Math.max(0, Math.min(90, result.W + (worsens ? 10 * wSteps : -10 * wSteps)));
+
+  const secondaryChance = Math.min(90,
+    (strong ? 45 : 18) +
+    (historyReinforces ? Math.min(30, Math.abs(score) * 3) : 0) +
+    Math.min(24, streak * 8));
+  if (Math.random() * 100 < secondaryChance) adjustChampionsKL(result, worsens);
+
+  const mayAdjustG = strong && historyReinforces && (streak >= 2 || Math.abs(score) >= 8);
+  if (mayAdjustG && Math.random() < 0.55) {
+    result.G = Math.max(1, Math.min(20, result.G + (worsens ? 1 : -1)));
+  }
+
+  if (strong && sameBoxParams(result, current)) {
+    if (oldW === result.W) adjustChampionsKL(result, worsens);
+    if (sameBoxParams(result, current)) {
+      result.G = Math.max(1, Math.min(20, result.G + (worsens ? 1 : -1)));
+    }
+  }
+  return result;
+}
+
+function sameBoxParams(left, right) {
+  return ["G", "K", "L", "W"].every(key => left[key] === right[key]);
+}
+
+function prepareChampionsChanges() {
+  const orderedSlots = state.champions.orderedSlots;
+  if (orderedSlots.length < 2 || state.champions.sending) return;
+  const history = getChampionsHistory();
+  state.champions.proposedChanges = orderedSlots.map((slot, index) => {
+    const box = state.boxes.find(item => item.slot === slot);
+    const old = { ...box.params };
+    return {
+      slot,
+      placement: index + 1,
+      old,
+      new: balancedChampionsParameters(old, slot, index, orderedSlots.length, history),
+      status: "idle"
+    };
+  });
+  renderChampionsMode();
+}
+
+async function sendChampionsChanges() {
+  const changes = state.champions.proposedChanges;
+  if (!changes.length || state.champions.sending) return;
+  state.champions.sending = true;
+  storeChampionsResult(state.champions.orderedSlots);
+  renderChampionsMode();
+
+  for (const change of changes) {
+    change.status = "sending";
+    renderChampionSendState(change);
+    change.status = await sendChampionChange(change) ? "confirmed" : "failed";
+    renderChampionSendState(change);
+  }
+
+  state.champions.sending = false;
+  renderChampionsMode();
+}
+
+function renderChampionSendState(change) {
+  const row = document.querySelector(`[data-champions-slot="${change.slot}"]`);
+  const status = row?.querySelector(".champions-send-state");
+  if (!status) return;
+  status.textContent = change.status === "sending" ? "Wird gesendet …" :
+    change.status === "confirmed" ? "Bestätigt" :
+    change.status === "failed" ? "Keine Antwort" : "";
+  status.className = `champions-send-state ${change.status}`;
+}
+
+async function sendChampionChange(change) {
+  const module = boxModules.find(item => item.slot === change.slot && item.device?.gatt?.connected);
+  if (!module) return false;
+  const statusBefore = module.lastStatusAt || 0;
+
+  if (!await sendToBoxModule(module, "MODE=IDLE")) return false;
+  await sleep(250);
+  if (!await sendToBoxModule(module, `CFG=${change.new.G},${change.new.K},${change.new.L},${change.new.W}`)) return false;
+  await sleep(300);
+  await sendToBoxModule(module, "STATUS");
+
+  const deadline = Date.now() + 4000;
+  while (Date.now() < deadline) {
+    const box = state.boxes.find(item => item.slot === change.slot);
+    if (module.lastStatusAt > statusBefore && box && sameBoxParams(box.params, change.new)) {
+      box.draft = { ...change.new };
+      renderBoxTable();
+      return true;
+    }
+    await sleep(200);
+  }
+  return false;
 }

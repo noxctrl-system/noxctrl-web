@@ -7,9 +7,9 @@
   <title>Race Center</title>
   <link rel="stylesheet" href="style.css?v=0.3" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" sizes="180x180" href="https://pub-4c7d4f52ba75435a92d8c2d4d8bf2168.r2.dev/B457A809-906B-49C0-AE19-4CE0C171D328.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon.png" />
   
-  <link rel="icon" type="image/png" sizes="32x32" href="https://pub-4c7d4f52ba75435a92d8c2d4d8bf2168.r2.dev/B457A809-906B-49C0-AE19-4CE0C171D328.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon.png" />
   
   <meta name="apple-mobile-web-app-title" content="NoxCtrL" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -61,7 +61,10 @@
     </section>
     
     <section class="glass-card">
-      <h2>Box Module</h2>
+      <div class="card-title-row">
+        <h2>Box Module</h2>
+        <button class="champions-open-button" id="openChampionsButton">ChampionsMode</button>
+      </div>
     
       <p class="card-subtext">Box-Parameter einstellen und durch die Taste an Alle oder nur an einzelne Box-Module senden.</p>
     
@@ -182,7 +185,39 @@
       </button>
     </div>
   </div>
+
+  <div id="championsModal" class="modal-overlay hidden">
+    <div class="modal-sheet champions-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h2>ChampionsMode</h2>
+        <button class="modal-close-button" id="closeChampionsButton">Schließen</button>
+      </div>
+
+      <p class="modal-hint">
+        Ordne die verbundenen BoxModule nach dem Rennergebnis. Platz 1 wird eingebremst,
+        der letzte Platz unterstützt. Frühere Ergebnisse und Serien fließen in die Berechnung ein.
+      </p>
+
+      <div id="championsEmpty" class="champions-empty hidden">
+        Mindestens zwei verbundene BoxModule werden benötigt.
+      </div>
+      <ol id="championsRanking" class="champions-ranking"></ol>
+      <div id="championsPreview" class="champions-preview hidden"></div>
+
+      <button class="modal-start-button" id="championsPrepareButton">Platzierung bestätigen</button>
+      <button class="modal-start-button hidden" id="championsSendButton">Änderungen senden</button>
+      <button class="champions-secondary-button hidden" id="championsEditButton">Platzierung noch einmal ändern</button>
+
+      <div class="champions-history-row">
+        <span>Gespeicherte Ergebnisse</span>
+        <strong id="championsHistoryCount">0</strong>
+      </div>
+      <button class="champions-reset-button" id="championsResetButton">Ergebnisgeschichte zurücksetzen</button>
+    </div>
+  </div>
   
-<script src="app.js?v=1.0"></script>
+<script src="app.js?v=1.1"></script>
+<script src="pwa.js?v=1.1"></script>
 </body>
 </html>
