@@ -303,6 +303,10 @@ select:focus-visible {
   gap: 9px;
 }
 
+.box-card-title-row {
+  margin-bottom: 22px;
+}
+
 .box-settings-sheet {
   max-height: min(92vh, 860px);
   overflow-y: auto;

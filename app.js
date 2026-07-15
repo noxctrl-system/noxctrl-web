@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v1.2 : BoxSettings";
+const APP_VERSION = "v1.2.1 : BoxSettings_spacing";
 const CHAMPIONS_HISTORY_KEY = "champions.history.v1";
 
 const RECONNECT_DELAY = 2000;
