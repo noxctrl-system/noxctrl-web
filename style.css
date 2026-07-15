@@ -297,6 +297,148 @@ select:focus-visible {
   font-weight: 700;
 }
 
+.box-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.box-settings-sheet {
+  max-height: min(92vh, 860px);
+  overflow-y: auto;
+}
+
+.box-settings-section + .box-settings-section {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.box-settings-section h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.box-name-settings {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.box-name-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 86px 46px;
+  gap: 9px;
+  align-items: center;
+}
+
+.box-name-label {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.box-name-label small {
+  color: var(--text-faint);
+}
+
+.box-name-input {
+  width: 86px;
+  min-height: 42px;
+  padding: 0 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+  text-align: center;
+  text-transform: uppercase;
+  font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.box-name-save {
+  width: 46px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: white;
+  font-weight: 800;
+}
+
+.sensor-table {
+  width: 100%;
+  min-width: 430px;
+  border-collapse: separate;
+  border-spacing: 0 9px;
+}
+
+.sensor-table th,
+.sensor-table td {
+  padding: 4px 7px;
+  text-align: center;
+}
+
+.sensor-table th {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.sensor-table th:first-child,
+.sensor-table td:first-child {
+  text-align: left;
+}
+
+.sensor-send-button {
+  min-height: 40px;
+  padding: 0 13px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+}
+
+.sensor-select {
+  min-width: 112px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+  text-align: center;
+}
+
+.sensor-select.draft {
+  border-color: rgba(255, 216, 77, 0.55);
+  background: rgba(255, 216, 77, 0.12);
+}
+
+.box-settings-status {
+  min-height: 20px;
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.box-settings-empty {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 216, 77, 0.09);
+  color: var(--warning);
+}
+
+@media (max-width: 520px) {
+  .box-title-actions {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .champions-open-button {
+    min-height: 36px;
+    padding: 0 11px;
+    font-size: 12px;
+  }
+}
+
 .champions-sheet {
   max-height: min(90vh, 820px);
   overflow-y: auto;

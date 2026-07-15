@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v1.1.2 : BoxSlot_compat";
+const APP_VERSION = "v1.2 : BoxSettings";
 const CHAMPIONS_HISTORY_KEY = "champions.history.v1";
 
 const RECONNECT_DELAY = 2000;
@@ -34,13 +34,14 @@ const state = {
   },
   
   boxes: [
-    { slot: 1, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
-    { slot: 2, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
-    { slot: 3, online: false, params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } },
-    { slot: 4, online: true,  params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 } }
+    { slot: 1, online: false, name: "BOX", params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 }, detection: { preset: 1, distance: 7 }, detectionDraft: { preset: 1, distance: 7 } },
+    { slot: 2, online: false, name: "BOX", params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 }, detection: { preset: 1, distance: 7 }, detectionDraft: { preset: 1, distance: 7 } },
+    { slot: 3, online: false, name: "BOX", params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 }, detection: { preset: 1, distance: 7 }, detectionDraft: { preset: 1, distance: 7 } },
+    { slot: 4, online: false, name: "BOX", params: { G: 8, K: 1, L: 3, W: 50 }, draft: { G: 8, K: 1, L: 3, W: 50 }, detection: { preset: 1, distance: 7 }, detectionDraft: { preset: 1, distance: 7 } }
   ],
 
   allDraft: { G: 8, K: 1, L: 3, W: 50 },
+  allDetectionDraft: { preset: 1, distance: 7 },
 
   champions: {
     orderedSlots: [],
@@ -294,7 +295,8 @@ function renderBoxModuleList() {
     .map((module, index) => {
       const connected = module.device?.gatt?.connected ? "verbunden" : "getrennt";
       const slotText = module.slot ? `Slot ${module.slot}` : "Slot unbekannt";
-      return `Box ${index + 1}: ${slotText} · ${connected}`;
+      const displayName = module.slot ? boxDisplayName(module.slot) : `Box ${index + 1}`;
+      return `${displayName}: ${slotText} · ${connected}`;
     })
     .join("<br>");
 }
@@ -413,6 +415,17 @@ function handleBoxStatus(module, text) {
   module.lastStatusAt = Date.now();
   const data = parseStatusLine(text);
 
+  if (data.ERR) {
+    const reasons = {
+      NAME_INVALID: "Name konnte nicht gespeichert werden.",
+      DETECT_INVALID: "Ungültiges Sensor-Preset.",
+      DIST_INVALID: "Ungültige Sensor-Distanz."
+    };
+    module.lastError = data.REASON ? `${reasons[data.ERR] || data.ERR} (${data.REASON})` : (reasons[data.ERR] || data.ERR);
+    setBoxSettingsStatus(module.lastError, "error");
+    return;
+  }
+
   const reportedSlot = Number(data.SLOT);
   if (Number.isInteger(reportedSlot) && reportedSlot >= 1 && reportedSlot <= 4) {
     module.slot = reportedSlot;
@@ -425,6 +438,16 @@ function handleBoxStatus(module, text) {
 
     if (box) {
       box.online = true;
+
+      if (data.NAME) box.name = normalizeBoxName(data.NAME) || "BOX";
+
+      const preset = Number(data.DETECT);
+      const distance = Number(data.DIST);
+      if (Number.isInteger(preset) && preset >= 0 && preset <= 2 &&
+          Number.isInteger(distance) && distance >= 3 && distance <= 10) {
+        box.detection = { preset, distance };
+        box.detectionDraft = { ...box.detection };
+      }
 
       if (data.G && data.K && data.L && data.W) {
         box.params = {
@@ -470,7 +493,7 @@ function accumulateBoxStatus(module, chunk) {
   // Neue Firmware beginnt mit FW=, ältere Statuszeilen üblicherweise mit SLOT=.
   // Bei einem solchen Anfang startet eine neue Statusmeldung; andere Chunks werden
   // an den Puffer angehängt, weil lange BLE-Werte fragmentiert eintreffen können.
-  if (/^(?:FW|SLOT)\s*=/i.test(text)) {
+  if (/^(?:FW|SLOT|ERR|EVT)\s*=/i.test(text)) {
     module.statusBuffer = text;
   } else {
     module.statusBuffer = `${module.statusBuffer || ""}${text}`;
@@ -716,6 +739,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupDelayedStartModal();
   setupNosSettingsModal();
   setupChampionsMode();
+  setupBoxSettings();
   renderDelayedStartUI();
 
   // Box-Tabelle testweise zuletzt
@@ -1060,7 +1084,7 @@ function createBoxRow(box) {
   const live = box.params;
 
   row.innerHTML = `
-    <td><button class="send-button send-slot-${box.slot}">Box ${box.slot}</button></td>
+    <td><button class="send-button send-slot-${box.slot}">${boxDisplayName(box.slot)}</button></td>
     <td>${createSelect(box.slot, "G", draft.G, 1, 20, 1, draft.G !== live.G)}</td>
     <td>${createSelect(box.slot, "K", draft.K, 1, 10, 1, draft.K !== live.K)}</td>
     <td>${createSelect(box.slot, "L", draft.L, 1, 10, 1, draft.L !== live.L)}</td>
@@ -1217,7 +1241,7 @@ function renderChampionsMode() {
     item.className = "champions-rank-item";
     item.innerHTML = `
       <span class="champions-place">${index + 1}.</span>
-      <span class="champions-box"><strong>BoxModul ${slot}</strong><small>${formatBoxParams(box.params)}</small></span>
+      <span class="champions-box"><strong>${boxDisplayName(slot)}</strong><small>Position ${slot} · ${formatBoxParams(box.params)}</small></span>
       <span class="champions-move">
         <button aria-label="Box ${slot} nach oben" ${index === 0 ? "disabled" : ""}>↑</button>
         <button aria-label="Box ${slot} nach unten" ${index === slots.length - 1 ? "disabled" : ""}>↓</button>
@@ -1231,7 +1255,7 @@ function renderChampionsMode() {
   preview.classList.toggle("hidden", changes.length === 0);
   preview.innerHTML = changes.map(change => `
     <div class="champions-change" data-champions-slot="${change.slot}">
-      <div><strong>${change.placement}. · BoxModul ${change.slot}</strong><span class="champions-send-state"></span></div>
+      <div><strong>${change.placement}. · ${boxDisplayName(change.slot)}</strong><span class="champions-send-state"></span></div>
       <div class="champions-values"><span>Alt ${formatBoxParams(change.old)}</span><b>→</b><span>Neu ${formatBoxParams(change.new)}</span></div>
     </div>`).join("");
 
@@ -1341,6 +1365,236 @@ function balancedChampionsParameters(current, slot, placementIndex, participantC
 
 function sameBoxParams(left, right) {
   return ["G", "K", "L", "W"].every(key => left[key] === right[key]);
+}
+
+function normalizeBoxName(rawValue) {
+  return String(rawValue || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+}
+
+function boxDisplayName(slot) {
+  const box = state.boxes.find(item => item.slot === Number(slot));
+  const name = normalizeBoxName(box?.name);
+  return !name || name === "BOX" ? `BOX ${slot}` : name;
+}
+
+function setupBoxSettings() {
+  const openButton = document.getElementById("openBoxSettingsButton");
+  const closeButton = document.getElementById("closeBoxSettingsButton");
+  const modal = document.getElementById("boxSettingsModal");
+
+  openButton?.addEventListener("click", openBoxSettings);
+  closeButton?.addEventListener("click", closeBoxSettings);
+  modal?.addEventListener("click", event => {
+    if (event.target === modal) closeBoxSettings();
+  });
+}
+
+function openBoxSettings() {
+  const modal = document.getElementById("boxSettingsModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  renderBoxSettings();
+  getConnectedBoxSlots().forEach(slot => {
+    const module = boxModules.find(item => item.slot === slot && item.device?.gatt?.connected);
+    if (module) requestBoxStatus(module);
+  });
+}
+
+function closeBoxSettings() {
+  document.getElementById("boxSettingsModal")?.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function setBoxSettingsStatus(text, type = "") {
+  const status = document.getElementById("boxSettingsStatus");
+  if (!status) return;
+  status.textContent = text;
+  status.style.color = type === "success" ? "var(--success)" :
+    type === "error" ? "var(--warning)" : "var(--text-soft)";
+}
+
+function renderBoxSettings() {
+  renderBoxNameSettings();
+  renderSensorSettings();
+}
+
+function renderBoxNameSettings() {
+  const container = document.getElementById("boxNameSettings");
+  if (!container) return;
+  const slots = getConnectedBoxSlots();
+
+  if (!slots.length) {
+    container.innerHTML = '<div class="box-settings-empty">Kein BoxModul verbunden.</div>';
+    return;
+  }
+
+  container.innerHTML = "";
+  slots.forEach(slot => {
+    const box = state.boxes.find(item => item.slot === slot);
+    const row = document.createElement("div");
+    row.className = "box-name-row";
+    row.innerHTML = `
+      <span class="box-name-label"><strong>Position ${slot}</strong><small>Gespeichert: ${boxDisplayName(slot)}</small></span>
+      <input class="box-name-input" maxlength="4" value="${normalizeBoxName(box?.name) || "BOX"}" aria-label="Name für Box ${slot}" />
+      <button class="box-name-save" aria-label="Name für Box ${slot} speichern">✓</button>`;
+    const input = row.querySelector("input");
+    const button = row.querySelector("button");
+    input.addEventListener("input", () => {
+      input.value = normalizeBoxName(input.value);
+    });
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter") saveBoxName(slot, input.value, input, button);
+    });
+    button.addEventListener("click", () => saveBoxName(slot, input.value, input, button));
+    container.appendChild(row);
+  });
+}
+
+async function saveBoxName(slot, rawName, input, button) {
+  const name = normalizeBoxName(rawName);
+  if (!name) {
+    setBoxSettingsStatus("Bitte mindestens einen Buchstaben eingeben.", "error");
+    return;
+  }
+
+  const module = boxModules.find(item => item.slot === slot && item.device?.gatt?.connected);
+  if (!module) {
+    setBoxSettingsStatus(`Box ${slot} ist nicht verbunden.`, "error");
+    return;
+  }
+
+  input.disabled = true;
+  button.disabled = true;
+  module.lastError = "";
+  const statusBefore = module.lastStatusAt || 0;
+  setBoxSettingsStatus(`Name ${name} wird an Position ${slot} gesendet …`);
+
+  const sent = await sendToBoxModule(module, `NAME=${name}`);
+  if (sent) {
+    await sleep(150);
+    await requestBoxStatus(module);
+  }
+
+  const confirmed = sent && await waitForBoxState(module, 2500, () => {
+    const box = state.boxes.find(item => item.slot === slot);
+    return module.lastStatusAt > statusBefore && normalizeBoxName(box?.name) === name;
+  });
+
+  input.disabled = false;
+  button.disabled = false;
+  if (confirmed) {
+    setBoxSettingsStatus(`${name} wurde dauerhaft gespeichert.`, "success");
+    renderBoxTable();
+    renderBoxModuleList();
+    renderBoxSettings();
+  } else {
+    setBoxSettingsStatus(module.lastError || "Keine Bestätigung vom BoxModul erhalten.", "error");
+  }
+}
+
+function detectionPresetTitle(value) {
+  return Number(value) === 0 ? "Früh" : Number(value) === 2 ? "Spät" : "Normal";
+}
+
+function renderSensorSettings() {
+  const tbody = document.getElementById("sensorSettingsBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  const slots = getConnectedBoxSlots();
+
+  tbody.appendChild(createSensorRow(null, "Alle", state.allDetectionDraft));
+  slots.forEach(slot => {
+    const box = state.boxes.find(item => item.slot === slot);
+    if (box) tbody.appendChild(createSensorRow(slot, boxDisplayName(slot), box.detectionDraft));
+  });
+}
+
+function createSensorRow(slot, title, draft) {
+  const row = document.createElement("tr");
+  const box = slot ? state.boxes.find(item => item.slot === slot) : null;
+  const presetDraft = Boolean(box && draft.preset !== box.detection.preset);
+  const distanceDraft = Boolean(box && draft.distance !== box.detection.distance);
+  row.innerHTML = `
+    <td><button class="sensor-send-button">${title}</button></td>
+    <td><select class="sensor-select ${presetDraft ? "draft" : ""}" data-sensor-key="preset">
+      ${[0, 1, 2].map(value => `<option value="${value}" ${draft.preset === value ? "selected" : ""}>${detectionPresetTitle(value)}</option>`).join("")}
+    </select></td>
+    <td><select class="sensor-select ${distanceDraft ? "draft" : ""}" data-sensor-key="distance">
+      ${Array.from({ length: 8 }, (_, index) => index + 3).map(value => `<option value="${value}" ${draft.distance === value ? "selected" : ""}>${value} cm</option>`).join("")}
+    </select></td>`;
+
+  row.querySelectorAll("select").forEach(select => {
+    select.addEventListener("change", event => {
+      const key = event.target.dataset.sensorKey;
+      const value = Number(event.target.value);
+      if (slot) box.detectionDraft[key] = value;
+      else state.allDetectionDraft[key] = value;
+      renderSensorSettings();
+    });
+  });
+
+  row.querySelector("button").addEventListener("click", async () => {
+    if (slot) {
+      await sendBoxDetection(slot, { ...box.detectionDraft });
+    } else {
+      if (!getConnectedBoxSlots().length) {
+        setBoxSettingsStatus("Kein BoxModul verbunden.", "error");
+        return;
+      }
+      if (getConnectedBoxSlots().length > 1 && !confirm("Die individuellen Sensor-Einstellungen aller BoxModule überschreiben?")) return;
+      await sendAllBoxDetection({ ...state.allDetectionDraft });
+    }
+  });
+  return row;
+}
+
+async function sendBoxDetection(slot, settings, quiet = false) {
+  const module = boxModules.find(item => item.slot === slot && item.device?.gatt?.connected);
+  if (!module) return false;
+  const statusBefore = module.lastStatusAt || 0;
+  if (!quiet) setBoxSettingsStatus(`Sensor-Einstellung wird an ${boxDisplayName(slot)} gesendet …`);
+
+  if (!await sendToBoxModule(module, `DETECT=${settings.preset}`)) return false;
+  await sleep(80);
+  if (!await sendToBoxModule(module, `DIST=${settings.distance}`)) return false;
+  await sleep(250);
+  await requestBoxStatus(module);
+
+  const confirmed = await waitForBoxState(module, 2000, () => {
+    const box = state.boxes.find(item => item.slot === slot);
+    return module.lastStatusAt > statusBefore && box?.detection.preset === settings.preset && box?.detection.distance === settings.distance;
+  });
+
+  if (confirmed) {
+    const box = state.boxes.find(item => item.slot === slot);
+    box.detectionDraft = { ...box.detection };
+  }
+  if (!quiet) {
+    setBoxSettingsStatus(confirmed ? `Sensor-Einstellung für ${boxDisplayName(slot)} bestätigt.` : `Keine Bestätigung von ${boxDisplayName(slot)}.`, confirmed ? "success" : "error");
+    renderSensorSettings();
+  }
+  return confirmed;
+}
+
+async function sendAllBoxDetection(settings) {
+  const slots = getConnectedBoxSlots();
+  setBoxSettingsStatus(`Sensor-Einstellung wird an ${slots.length} BoxModule gesendet …`);
+  let confirmed = 0;
+  for (const slot of slots) {
+    if (await sendBoxDetection(slot, settings, true)) confirmed += 1;
+  }
+  setBoxSettingsStatus(`Sensor-Einstellung: ${confirmed}/${slots.length} bestätigt.`, confirmed === slots.length ? "success" : "error");
+  renderSensorSettings();
+}
+
+async function waitForBoxState(module, timeoutMs, predicate) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return true;
+    await sleep(120);
+  }
+  return false;
 }
 
 function prepareChampionsChanges() {

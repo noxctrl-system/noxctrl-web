@@ -63,7 +63,10 @@
     <section class="glass-card">
       <div class="card-title-row">
         <h2>Box Module</h2>
-        <button class="champions-open-button" id="openChampionsButton">ChampionsMode</button>
+        <div class="box-title-actions">
+          <button class="icon-button" id="openBoxSettingsButton" aria-label="Box-Einstellungen">⚙</button>
+          <button class="champions-open-button" id="openChampionsButton">ChampionsMode</button>
+        </div>
       </div>
     
       <p class="card-subtext">Box-Parameter einstellen und durch die Taste an Alle oder nur an einzelne Box-Module senden.</p>
@@ -216,8 +219,36 @@
       <button class="champions-reset-button" id="championsResetButton">Ergebnisgeschichte zurücksetzen</button>
     </div>
   </div>
+
+  <div id="boxSettingsModal" class="modal-overlay hidden">
+    <div class="modal-sheet box-settings-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h2>Box-Einstellungen</h2>
+        <button class="modal-close-button" id="closeBoxSettingsButton">Schließen</button>
+      </div>
+
+      <section class="box-settings-section">
+        <h3>BoxModule benennen</h3>
+        <p class="modal-hint">Bis zu vier Buchstaben. Der Name wird dauerhaft im BoxModul gespeichert.</p>
+        <div id="boxNameSettings" class="box-name-settings"></div>
+      </section>
+
+      <section class="box-settings-section">
+        <h3>Sensor-Erkennung</h3>
+        <p class="modal-hint">Die Erkennung bestimmt, wie schnell ein Fahrzeug bestätigt wird. Die Distanz legt den maximalen Abstand zum Sensor fest.</p>
+        <div class="table-wrap">
+          <table class="sensor-table">
+            <thead><tr><th>Senden</th><th>Erkennung</th><th>Distanz</th></tr></thead>
+            <tbody id="sensorSettingsBody"></tbody>
+          </table>
+        </div>
+        <p id="boxSettingsStatus" class="box-settings-status"></p>
+      </section>
+    </div>
+  </div>
   
-<script src="app.js?v=1.1.2"></script>
-<script src="pwa.js?v=1.1.2"></script>
+<script src="app.js?v=1.2"></script>
+<script src="pwa.js?v=1.2"></script>
 </body>
 </html>
