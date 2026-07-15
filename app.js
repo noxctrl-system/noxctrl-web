@@ -1,8 +1,7 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v1.3 : ChampionsMode_Balancing";
+const APP_VERSION = "v2.2";
 const CHAMPIONS_HISTORY_KEY = "champions.history.v1";
-const CHAMPIONS_ENABLED_KEY = "champions.enabled.v1";
 const CHAMPIONS_LEVEL_KEY = "champions.level.v1";
 
 const RECONNECT_DELAY = 2000;
@@ -46,7 +45,6 @@ const state = {
   allDetectionDraft: { preset: 1, distance: 7 },
 
   champions: {
-    enabled: localStorage.getItem(CHAMPIONS_ENABLED_KEY) !== "false",
     level: localStorage.getItem(CHAMPIONS_LEVEL_KEY) === "moderate" ? "moderate" : "strong",
     orderedSlots: [],
     proposedChanges: [],
@@ -1157,7 +1155,6 @@ function setupChampionsMode() {
   const sendButton = document.getElementById("championsSendButton");
   const editButton = document.getElementById("championsEditButton");
   const resetButton = document.getElementById("championsResetButton");
-  const enabledButton = document.getElementById("championsEnabledButton");
 
   openButton?.addEventListener("click", openChampionsMode);
   closeButton?.addEventListener("click", closeChampionsMode);
@@ -1174,13 +1171,6 @@ function setupChampionsMode() {
     if (!confirm("Ergebnisgeschichte wirklich zurücksetzen?")) return;
     localStorage.removeItem(CHAMPIONS_HISTORY_KEY);
     state.champions.proposedChanges = [];
-    renderChampionsMode();
-  });
-  enabledButton?.addEventListener("click", () => {
-    if (state.champions.sending) return;
-    state.champions.enabled = !state.champions.enabled;
-    state.champions.proposedChanges = [];
-    localStorage.setItem(CHAMPIONS_ENABLED_KEY, String(state.champions.enabled));
     renderChampionsMode();
   });
   document.querySelectorAll("[data-champions-level]").forEach(button => {
@@ -1247,16 +1237,7 @@ function renderChampionsMode() {
   const editButton = document.getElementById("championsEditButton");
   const historyCount = document.getElementById("championsHistoryCount");
   const resetButton = document.getElementById("championsResetButton");
-  const enabledButton = document.getElementById("championsEnabledButton");
-  const content = document.getElementById("championsContent");
   if (!ranking || !preview) return;
-
-  content?.classList.toggle("hidden", !state.champions.enabled);
-  if (enabledButton) {
-    enabledButton.textContent = state.champions.enabled ? "Ein" : "Aus";
-    enabledButton.classList.toggle("active", state.champions.enabled);
-    enabledButton.setAttribute("aria-pressed", String(state.champions.enabled));
-  }
   document.querySelectorAll("[data-champions-level]").forEach(button => {
     button.classList.toggle("active", button.dataset.championsLevel === state.champions.level);
   });
@@ -1657,7 +1638,7 @@ async function waitForBoxState(module, timeoutMs, predicate) {
 
 function prepareChampionsChanges() {
   const orderedSlots = state.champions.orderedSlots;
-  if (!state.champions.enabled || orderedSlots.length < 2 || state.champions.sending) return;
+  if (orderedSlots.length < 2 || state.champions.sending) return;
   const history = getChampionsHistory();
   state.champions.proposedChanges = orderedSlots.map((slot, index) => {
     const box = state.boxes.find(item => item.slot === slot);

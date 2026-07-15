@@ -1,4 +1,4 @@
-const CACHE_NAME = "noxctrl-web-v1.3-champions-balancing";
+const CACHE_NAME = "noxctrl-web-v2.2";
 const APP_SHELL = [
   "./",
   "./index.html",
