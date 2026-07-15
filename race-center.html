@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Race Center</title>
-  <link rel="stylesheet" href="style.css?v=0.3" />
+  <link rel="stylesheet" href="style.css?v=1.3" />
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="assets/icon.png" />
   
@@ -197,26 +197,41 @@
         <button class="modal-close-button" id="closeChampionsButton">Schließen</button>
       </div>
 
-      <p class="modal-hint">
-        Ordne die verbundenen BoxModule nach dem Rennergebnis. Platz 1 wird eingebremst,
-        der letzte Platz unterstützt. Frühere Ergebnisse und Serien fließen in die Berechnung ein.
-      </p>
-
-      <div id="championsEmpty" class="champions-empty hidden">
-        Mindestens zwei verbundene BoxModule werden benötigt.
+      <div class="champions-enable-row">
+        <span>ChampionsMode</span>
+        <button class="champions-toggle-button" id="championsEnabledButton" type="button" aria-pressed="true">Ein</button>
       </div>
-      <ol id="championsRanking" class="champions-ranking"></ol>
-      <div id="championsPreview" class="champions-preview hidden"></div>
 
-      <button class="modal-start-button" id="championsPrepareButton">Platzierung bestätigen</button>
-      <button class="modal-start-button hidden" id="championsSendButton">Änderungen senden</button>
-      <button class="champions-secondary-button hidden" id="championsEditButton">Platzierung noch einmal ändern</button>
+      <div id="championsContent">
+        <div class="champions-level-row">
+          <span>Balancing</span>
+          <div class="toggle-pill-row" aria-label="Balancing-Stufe">
+            <button class="pill-button" type="button" data-champions-level="moderate">Moderat</button>
+            <button class="pill-button" type="button" data-champions-level="strong">Stark</button>
+          </div>
+        </div>
 
-      <div class="champions-history-row">
-        <span>Gespeicherte Ergebnisse</span>
-        <strong id="championsHistoryCount">0</strong>
+        <p class="modal-hint" id="championsExplanation">
+          Ordne die verbundenen BoxModule nach dem Rennergebnis. Platz 1 wird eingebremst,
+          der letzte Platz unterstützt. Frühere Ergebnisse und Serien fließen in die Berechnung ein.
+        </p>
+
+        <div id="championsEmpty" class="champions-empty hidden">
+          Mindestens zwei verbundene BoxModule werden benötigt.
+        </div>
+        <ol id="championsRanking" class="champions-ranking"></ol>
+        <div id="championsPreview" class="champions-preview hidden"></div>
+
+        <button class="modal-start-button" id="championsPrepareButton">Platzierung bestätigen</button>
+        <button class="modal-start-button hidden" id="championsSendButton">Änderungen senden</button>
+        <button class="champions-secondary-button hidden" id="championsEditButton">Platzierung noch einmal ändern</button>
+
+        <div class="champions-history-row">
+          <span>Gespeicherte Ergebnisse</span>
+          <strong id="championsHistoryCount">0</strong>
+        </div>
+        <button class="champions-reset-button" id="championsResetButton">Ergebnisgeschichte zurücksetzen</button>
       </div>
-      <button class="champions-reset-button" id="championsResetButton">Ergebnisgeschichte zurücksetzen</button>
     </div>
   </div>
 
@@ -248,7 +263,7 @@
     </div>
   </div>
   
-<script src="app.js?v=1.2.1"></script>
-<script src="pwa.js?v=1.2.1"></script>
+<script src="app.js?v=1.3"></script>
+<script src="pwa.js?v=1.3"></script>
 </body>
 </html>

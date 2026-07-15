@@ -1,7 +1,9 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v1.2.1 : BoxSettings_spacing";
+const APP_VERSION = "v1.3 : ChampionsMode_Balancing";
 const CHAMPIONS_HISTORY_KEY = "champions.history.v1";
+const CHAMPIONS_ENABLED_KEY = "champions.enabled.v1";
+const CHAMPIONS_LEVEL_KEY = "champions.level.v1";
 
 const RECONNECT_DELAY = 2000;
 
@@ -44,6 +46,8 @@ const state = {
   allDetectionDraft: { preset: 1, distance: 7 },
 
   champions: {
+    enabled: localStorage.getItem(CHAMPIONS_ENABLED_KEY) !== "false",
+    level: localStorage.getItem(CHAMPIONS_LEVEL_KEY) === "moderate" ? "moderate" : "strong",
     orderedSlots: [],
     proposedChanges: [],
     sending: false
@@ -1153,6 +1157,7 @@ function setupChampionsMode() {
   const sendButton = document.getElementById("championsSendButton");
   const editButton = document.getElementById("championsEditButton");
   const resetButton = document.getElementById("championsResetButton");
+  const enabledButton = document.getElementById("championsEnabledButton");
 
   openButton?.addEventListener("click", openChampionsMode);
   closeButton?.addEventListener("click", closeChampionsMode);
@@ -1170,6 +1175,22 @@ function setupChampionsMode() {
     localStorage.removeItem(CHAMPIONS_HISTORY_KEY);
     state.champions.proposedChanges = [];
     renderChampionsMode();
+  });
+  enabledButton?.addEventListener("click", () => {
+    if (state.champions.sending) return;
+    state.champions.enabled = !state.champions.enabled;
+    state.champions.proposedChanges = [];
+    localStorage.setItem(CHAMPIONS_ENABLED_KEY, String(state.champions.enabled));
+    renderChampionsMode();
+  });
+  document.querySelectorAll("[data-champions-level]").forEach(button => {
+    button.addEventListener("click", () => {
+      if (state.champions.sending) return;
+      state.champions.level = button.dataset.championsLevel === "moderate" ? "moderate" : "strong";
+      state.champions.proposedChanges = [];
+      localStorage.setItem(CHAMPIONS_LEVEL_KEY, state.champions.level);
+      renderChampionsMode();
+    });
   });
 }
 
@@ -1226,7 +1247,19 @@ function renderChampionsMode() {
   const editButton = document.getElementById("championsEditButton");
   const historyCount = document.getElementById("championsHistoryCount");
   const resetButton = document.getElementById("championsResetButton");
+  const enabledButton = document.getElementById("championsEnabledButton");
+  const content = document.getElementById("championsContent");
   if (!ranking || !preview) return;
+
+  content?.classList.toggle("hidden", !state.champions.enabled);
+  if (enabledButton) {
+    enabledButton.textContent = state.champions.enabled ? "Ein" : "Aus";
+    enabledButton.classList.toggle("active", state.champions.enabled);
+    enabledButton.setAttribute("aria-pressed", String(state.champions.enabled));
+  }
+  document.querySelectorAll("[data-champions-level]").forEach(button => {
+    button.classList.toggle("active", button.dataset.championsLevel === state.champions.level);
+  });
 
   const slots = state.champions.orderedSlots;
   const changes = state.champions.proposedChanges;
@@ -1286,7 +1319,8 @@ function getChampionsHistory() {
 
 function storeChampionsResult(placements) {
   const history = getChampionsHistory();
-  history.push({ id: `${Date.now()}-${Math.random()}`, createdAt: new Date().toISOString(), placements });
+  const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+  history.push({ id, createdAt: new Date().toISOString(), placements });
   localStorage.setItem(CHAMPIONS_HISTORY_KEY, JSON.stringify(history.slice(-40)));
 }
 
@@ -1322,12 +1356,13 @@ function adjustChampionsKL(params, worsens) {
     if (params.K > 1) options.push("K");
     if (params.L > 2 && params.L - 1 > params.K) options.push("L");
   }
-  if (!options.length) return;
+  if (!options.length) return false;
   const key = options[Math.floor(Math.random() * options.length)];
   params[key] += worsens ? 1 : -1;
+  return true;
 }
 
-function balancedChampionsParameters(current, slot, placementIndex, participantCount, history) {
+function balancedChampionsParameters(current, slot, placementIndex, participantCount, history, level = "strong") {
   const impact = placementImpact(placementIndex, participantCount);
   const result = { ...current };
   if (!impact) return result;
@@ -1337,6 +1372,29 @@ function balancedChampionsParameters(current, slot, placementIndex, participantC
   const score = championsHistoryScore(slot, history);
   const streak = championsPlacementStreak(slot, placementIndex, history);
   const historyReinforces = (worsens && score > 0) || (!worsens && score < 0);
+
+  if (level === "moderate") {
+    const historyBonus = historyReinforces ? Math.min(strong ? 15 : 18, Math.abs(score) * 2) : 0;
+    const streakBonus = Math.min(strong ? 15 : 12, streak * (strong ? 5 : 4));
+
+    if (strong) {
+      result.W = Math.max(0, Math.min(90, result.W + (worsens ? 10 : -10)));
+      const klChance = Math.min(45, 12 + historyBonus + streakBonus);
+      if (Math.random() * 100 < klChance) adjustChampionsKL(result, worsens);
+      if (sameBoxParams(result, current)) adjustChampionsKL(result, worsens);
+      if (sameBoxParams(result, current)) {
+        result.G = Math.max(1, Math.min(20, result.G + (worsens ? 1 : -1)));
+      }
+    } else {
+      const wChance = Math.min(45, 15 + historyBonus + streakBonus);
+      if (Math.random() * 100 < wChance) {
+        result.W = Math.max(0, Math.min(90, result.W + (worsens ? 10 : -10)));
+      }
+      const klChance = Math.min(18, 3 + Math.floor(historyBonus / 3) + Math.floor(streakBonus / 3));
+      if (Math.random() * 100 < klChance) adjustChampionsKL(result, worsens);
+    }
+    return result;
+  }
 
   let wSteps = strong && Math.random() < 0.5 ? 2 : 1;
   if (historyReinforces && Math.abs(score) >= 5) wSteps = 2;
@@ -1599,7 +1657,7 @@ async function waitForBoxState(module, timeoutMs, predicate) {
 
 function prepareChampionsChanges() {
   const orderedSlots = state.champions.orderedSlots;
-  if (orderedSlots.length < 2 || state.champions.sending) return;
+  if (!state.champions.enabled || orderedSlots.length < 2 || state.champions.sending) return;
   const history = getChampionsHistory();
   state.champions.proposedChanges = orderedSlots.map((slot, index) => {
     const box = state.boxes.find(item => item.slot === slot);
@@ -1608,7 +1666,7 @@ function prepareChampionsChanges() {
       slot,
       placement: index + 1,
       old,
-      new: balancedChampionsParameters(old, slot, index, orderedSlots.length, history),
+      new: balancedChampionsParameters(old, slot, index, orderedSlots.length, history, state.champions.level),
       status: "idle"
     };
   });
