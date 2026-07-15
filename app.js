@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v1.1.1 : BoxStatus_compat";
+const APP_VERSION = "v1.1.2 : BoxSlot_compat";
 const CHAMPIONS_HISTORY_KEY = "champions.history.v1";
 
 const RECONNECT_DELAY = 2000;
@@ -367,9 +367,14 @@ async function connectBoxModule() {
       statusBuffer: ""
     };
 
+    const assignedSlot = nextFreeBoxSlot();
+    if (!assignedSlot) throw new Error("Kein freier Box-Slot verfügbar");
+    module.slot = assignedSlot;
+
     boxModules.push(module);
 
     await setupBoxNotifications(module);
+    await assignBoxSlot(module);
     await requestBoxStatus(module);
 
     renderBoxModuleList();
@@ -408,8 +413,9 @@ function handleBoxStatus(module, text) {
   module.lastStatusAt = Date.now();
   const data = parseStatusLine(text);
 
-  if (data.SLOT) {
-    module.slot = Number(data.SLOT);
+  const reportedSlot = Number(data.SLOT);
+  if (Number.isInteger(reportedSlot) && reportedSlot >= 1 && reportedSlot <= 4) {
+    module.slot = reportedSlot;
   }
 
   const slot = module.slot;
@@ -493,6 +499,21 @@ async function sendToBoxModule(module, command) {
   }
 }
 
+function nextFreeBoxSlot() {
+  for (let slot = 1; slot <= 4; slot += 1) {
+    if (!boxModules.some(module => module.slot === slot)) return slot;
+  }
+  return null;
+}
+
+async function assignBoxSlot(module) {
+  if (!module?.slot || module.slot < 1 || module.slot > 4) return false;
+
+  const assigned = await sendToBoxModule(module, `SLOT=${module.slot}`);
+  if (assigned) await sleep(150);
+  return assigned;
+}
+
 async function requestBoxStatus(module) {
   if (!module?.statChar || !module?.device?.gatt?.connected) return false;
 
@@ -563,6 +584,7 @@ async function reconnectBoxModule(module) {
     module.statChar = statChar;
 
     await setupBoxNotifications(module);
+    await assignBoxSlot(module);
     await requestBoxStatus(module);
 
     module.reconnecting = false;
