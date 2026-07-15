@@ -448,7 +448,6 @@ select:focus-visible {
   overflow-y: auto;
 }
 
-.champions-enable-row,
 .champions-level-row {
   display: flex;
   align-items: center;
@@ -456,22 +455,6 @@ select:focus-visible {
   gap: 14px;
   margin: 16px 0;
   font-weight: 700;
-}
-
-.champions-toggle-button {
-  min-width: 82px;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  color: var(--text-soft);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-weight: 800;
-}
-
-.champions-toggle-button.active {
-  color: white;
-  background: linear-gradient(180deg, var(--active-bright), var(--active));
 }
 
 @media (max-width: 560px) {
