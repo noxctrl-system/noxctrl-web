@@ -1,4 +1,4 @@
-const CACHE_NAME = "noxctrl-web-v1.1";
+const CACHE_NAME = "noxctrl-web-v1.1-status-compat";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -363,7 +363,8 @@ async function connectBoxModule() {
       statChar,
       slot: null,
       lastStatus: "",
-      lastStatusAt: 0
+      lastStatusAt: 0,
+      statusBuffer: ""
     };
 
     boxModules.push(module);
@@ -392,10 +393,11 @@ async function setupBoxNotifications(module) {
       const value = event.target.value;
       const text = new TextDecoder().decode(value);
 
-      module.lastStatus = text;
+      const statusText = accumulateBoxStatus(module, text);
+      module.lastStatus = statusText;
 
-      console.log(`BOX STATUS [${module.name}]:`, text);
-      handleBoxStatus(module, text);
+      console.log(`BOX STATUS [${module.name}]:`, statusText);
+      handleBoxStatus(module, statusText);
     });
   } catch (error) {
     console.warn("Box Notifications konnten nicht aktiviert werden:", error);
@@ -439,14 +441,41 @@ function handleBoxStatus(module, text) {
 function parseStatusLine(text) {
   const data = {};
 
-  text.split(";").forEach(part => {
-    const [key, value] = part.split("=");
-    if (key && value !== undefined) {
-      data[key.trim()] = value.trim();
-    }
-  });
+  String(text || "")
+    .split(/[;\r\n]+/)
+    .forEach(part => {
+      const separatorIndex = part.indexOf("=");
+      if (separatorIndex < 1) return;
+
+      const key = part.slice(0, separatorIndex).trim().toUpperCase();
+      const value = part.slice(separatorIndex + 1).trim();
+      if (/^[A-Z][A-Z0-9_]*$/.test(key) && value !== "") {
+        data[key] = value;
+      }
+    });
 
   return data;
+}
+
+function accumulateBoxStatus(module, chunk) {
+  const text = String(chunk || "").replace(/\0/g, "").trim();
+  if (!text) return module.statusBuffer || "";
+
+  // Neue Firmware beginnt mit FW=, ältere Statuszeilen üblicherweise mit SLOT=.
+  // Bei einem solchen Anfang startet eine neue Statusmeldung; andere Chunks werden
+  // an den Puffer angehängt, weil lange BLE-Werte fragmentiert eintreffen können.
+  if (/^(?:FW|SLOT)\s*=/i.test(text)) {
+    module.statusBuffer = text;
+  } else {
+    module.statusBuffer = `${module.statusBuffer || ""}${text}`;
+  }
+
+  // Schutz gegen einen unbeschränkt wachsenden Puffer bei unerwarteten Meldungen.
+  if (module.statusBuffer.length > 1024) {
+    module.statusBuffer = module.statusBuffer.slice(-1024);
+  }
+
+  return module.statusBuffer;
 }
 
 async function sendToBoxModule(module, command) {
