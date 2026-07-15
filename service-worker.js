@@ -1,4 +1,4 @@
-const CACHE_NAME = "noxctrl-web-v1.2-box-settings";
+const CACHE_NAME = "noxctrl-web-v1.2.1-box-settings-spacing";
 const APP_SHELL = [
   "./",
   "./index.html",
