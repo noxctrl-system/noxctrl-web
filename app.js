@@ -1,6 +1,6 @@
 let nosModules = [];
 let boxModules = [];
-const APP_VERSION = "v1.1 : include_ChampionsMode";
+const APP_VERSION = "v1.1.1 : BoxStatus_compat";
 const CHAMPIONS_HISTORY_KEY = "champions.history.v1";
 
 const RECONNECT_DELAY = 2000;
@@ -370,7 +370,7 @@ async function connectBoxModule() {
     boxModules.push(module);
 
     await setupBoxNotifications(module);
-    await sendToBoxModule(module, "STATUS");
+    await requestBoxStatus(module);
 
     renderBoxModuleList();
     setBoxStatus(`${boxModules.length} Box-Modul(e) verbunden`, "green");
@@ -493,6 +493,34 @@ async function sendToBoxModule(module, command) {
   }
 }
 
+async function requestBoxStatus(module) {
+  if (!module?.statChar || !module?.device?.gatt?.connected) return false;
+
+  module.statusBuffer = "";
+  const sent = await sendToBoxModule(module, "STATUS");
+  if (!sent) return false;
+
+  // Die neue Statuszeile kann größer als eine BLE-Notification sein. Chrome
+  // erhält dann je nach ausgehandelter MTU nur den Anfang. Ein anschließender
+  // GATT-Read lädt den vollständigen Characteristic-Wert (Long Read) nach.
+  await sleep(120);
+  try {
+    const value = await module.statChar.readValue();
+    const text = new TextDecoder().decode(value);
+    if (text) {
+      const statusText = accumulateBoxStatus(module, text);
+      module.lastStatus = statusText;
+      handleBoxStatus(module, statusText);
+    }
+  } catch (error) {
+    // Alte Firmware/Characteristics können Read ablehnen. In diesem Fall
+    // bleibt die bereits empfangene Notification weiterhin gültig.
+    console.warn(`Box-Status konnte nicht vollständig gelesen werden [${module.name}]:`, error);
+  }
+
+  return true;
+}
+
 function handleBoxDisconnected(deviceId) {
   console.log("Box-Modul getrennt:", deviceId);
 
@@ -535,7 +563,7 @@ async function reconnectBoxModule(module) {
     module.statChar = statChar;
 
     await setupBoxNotifications(module);
-    await sendToBoxModule(module, "STATUS");
+    await requestBoxStatus(module);
 
     module.reconnecting = false;
 
@@ -622,7 +650,7 @@ async function commandSendBoxConfig(slot, params) {
   if (ok) {
     setBoxStatus(`Parameter an Box ${slot} gesendet`, "green");
     await sleep(80);
-    await sendToBoxModule(module, "STATUS");
+    await requestBoxStatus(module);
   } else {
     setBoxStatus(`Senden an Box ${slot} fehlgeschlagen`, "yellow");
   }
@@ -638,7 +666,7 @@ async function commandSendAllBoxes(params) {
     if (ok) successCount += 1;
 
     await sleep(80);
-    await sendToBoxModule(module, "STATUS");
+    await requestBoxStatus(module);
     await sleep(80);
   }
 
@@ -1117,7 +1145,7 @@ function openChampionsMode() {
 
   connectedSlots.forEach(slot => {
     const module = boxModules.find(item => item.slot === slot && item.device?.gatt?.connected);
-    if (module) sendToBoxModule(module, "STATUS");
+    if (module) requestBoxStatus(module);
   });
 }
 
@@ -1348,7 +1376,7 @@ async function sendChampionChange(change) {
   await sleep(250);
   if (!await sendToBoxModule(module, `CFG=${change.new.G},${change.new.K},${change.new.L},${change.new.W}`)) return false;
   await sleep(300);
-  await sendToBoxModule(module, "STATUS");
+  await requestBoxStatus(module);
 
   const deadline = Date.now() + 4000;
   while (Date.now() < deadline) {
